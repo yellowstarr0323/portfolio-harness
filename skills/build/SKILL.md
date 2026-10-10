@@ -26,6 +26,8 @@ facts와 design을 합쳐 HTML을 만들고 PDF로 출력한다. **이 스킬만
 
 ## 0. 사전 확인
 
+**환경 점검**: 가장 먼저 `python3 <S>/env_check.py`를 돌린다. 실패면 HTML을 쓰지 않고 멈춘다 — 없는 것과 설치 명령(출력 그대로)을 알리고, 설치했다고 하면 다시 점검한다. Chrome·poppler·웹폰트 연결이 없으면 PDF를 만들 수 없거나 글꼴이 바뀐 PDF가 나온다.
+
 앞 단계가 비어 있으면 **묻지 않고 그 단계부터 진행한다.** "먼저 ~를 해야 해, 시작할까?"라고 되묻지 않는다.
 - `portfolio/facts/`가 비어 있음 → `interview` 절차부터 시작
 - `portfolio/design.json` 또는 `portfolio/theme/tokens.css`가 없음 → `design` 절차부터 시작

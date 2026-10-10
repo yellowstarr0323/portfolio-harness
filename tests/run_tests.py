@@ -3,7 +3,7 @@
 
 사용법: python3 tests/run_tests.py [--fast]
 
-검사 대상: rules/ 단일 원본 구조, facts_lint, facts_stats, check_numbers, pair_blocks(audit), image_info, layout_check, link_check, upload(+배포 zip), export.py, scripts/test_env.py
+검사 대상: rules/ 단일 원본 구조, facts_lint, facts_stats, check_numbers, pair_blocks(audit), log_answers 훅·근거 원문 대조, env_check, image_info, layout_check, link_check, upload(+배포 zip), export.py, scripts/test_env.py
   --fast  headless Chrome이 필요한 export.py 테스트를 건너뛴다 (나머지는 몇 초)
 
 테스트용 HTML·기록·이미지를 임시 폴더에 만들고, 각 스크립트의 종료 코드와 출력 문구를 확인한다.
@@ -485,6 +485,84 @@ def pair_tests(tmp: Path) -> None:
          '<p data-fact="dms.md#회고">측정 조건을 먼저 정해야 한다는 걸 배웠다.</p>', 0, ("## PAIR 1",), ("## RETRO",))
 
 
+def provenance_tests(tmp: Path) -> None:
+    """근거 원문(D-TXT-6): 훅 hooks/log_answers.py가 사용자 말을 남기고, facts_lint.py가 기록의 수치를 대조한다. 환경 점검도 여기서."""
+    import os
+    hook = ROOT / "hooks" / "log_answers.py"
+    cwd = tmp / "prov"
+    (cwd / "portfolio").mkdir(parents=True)
+    tr = tmp / "prov-session.jsonl"
+    rows = [
+        {"type": "user", "timestamp": "2026-10-10T09:00:00Z", "message": {"content": "포트폴리오 만들어줘. DMS에서 조회를 1,225ms에서 241ms로 줄였어"}},
+        {"type": "assistant", "message": {"content": [{"type": "text", "text": "모델이 말한 9,999ms"},
+                                                      {"type": "tool_use", "id": "ask1", "name": "AskUserQuestion", "input": {}}]}},
+        {"type": "user", "toolUseResult": {"questions": [{"question": "모델 질문 8,888명?"}], "answers": {"모델 질문 8,888명?": "월 사용자 약 300명"},
+                                           "annotations": {"모델 질문 8,888명?": {"notes": "학생 수 기준 650명"}}},
+         "message": {"content": [{"type": "tool_result", "tool_use_id": "ask1", "content": "모델 질문 8,888명?=월 사용자 약 300명"}]}},
+        {"type": "user", "message": {"content": "<task-notification>배경 작업 7,777건 완료</task-notification>"}},
+        {"type": "user", "isMeta": True, "message": {"content": "메타 6,666"}},
+        {"type": "user", "message": {"content": "그리고 배포는 2026년 3월에 했어"}},
+    ]
+    tr.write_text("\n".join(json.dumps(r, ensure_ascii=False) for r in rows) + "\n", encoding="utf-8")
+
+    def fire(ev: dict) -> int:
+        p = subprocess.run([sys.executable, "-I", str(hook)], input=json.dumps(ev, ensure_ascii=False), capture_output=True, text=True, timeout=30)
+        return p.returncode
+    log = cwd / "portfolio" / "sources" / "interview-log.md"
+    code = fire({"hook_event_name": "Stop", "cwd": str(tmp / "no-portfolio"), "transcript_path": str(tr)})
+    results.append(("log_answers portfolio/ 없는 폴더에는 아무것도 안 씀", code == 0 and not (tmp / "no-portfolio").exists(), f"code {code}"))
+    code = fire({"hook_event_name": "Stop", "cwd": str(cwd), "transcript_path": str(tr)})
+    text = log.read_text(encoding="utf-8") if log.exists() else ""
+    ok = (code == 0 and "1,225ms에서 241ms" in text and "월 사용자 약 300명" in text and "학생 수 기준 650명" in text
+          and "배포는 2026년 3월" in text)
+    results.append(("log_answers 사용자 메시지·고른 답·메모를 원문 그대로 남김", ok, text[-400:]))
+    leaked = [x for x in ("9,999", "8,888", "7,777", "6,666") if x in text]
+    results.append(("log_answers 모델 말·질문 문장·작업 알림·메타는 안 남김", not leaked, f"샌 것: {leaked}"))
+    n = text.count("\n## ")
+    fire({"hook_event_name": "Stop", "cwd": str(cwd), "transcript_path": str(tr)})
+    fire({"hook_event_name": "UserPromptSubmit", "cwd": str(cwd), "transcript_path": str(tr), "prompt": "그리고 배포는 2026년 3월에 했어"})
+    results.append(("log_answers 같은 글은 한 번만", log.read_text(encoding="utf-8").count("\n## ") == n, f"{n} → {log.read_text(encoding='utf-8').count(chr(10) + '## ')}"))
+    fire({"hook_event_name": "UserPromptSubmit", "cwd": str(cwd), "prompt": "팀은 4명이었어"})
+    fire({"hook_event_name": "PostToolUse", "cwd": str(cwd), "tool_name": "AskUserQuestion",
+          "tool_response": {"questions": [{"question": "q 5,555?"}], "answers": {"q 5,555?": "p95 기준 512ms"}}})
+    text = log.read_text(encoding="utf-8")
+    results.append(("log_answers 이번 메시지·이번 질문 답(질문 문장 제외)도 바로 남김", "팀은 4명" in text and "p95 기준 512ms" in text and "5,555" not in text, text[-300:]))
+    code = fire({"hook_event_name": "Stop", "cwd": str(cwd), "transcript_path": str(tmp / "없는.jsonl")})
+    code2 = subprocess.run([sys.executable, "-I", str(hook)], input="JSON 아님", capture_output=True, text=True, timeout=30).returncode
+    results.append(("log_answers 기록이 없거나 입력이 깨져도 종료 0", code == 0 and code2 == 0, f"{code}, {code2}"))
+
+    # facts_lint 대조
+    facts = cwd / "portfolio" / "facts"
+    facts.mkdir()
+    (facts / "profile.md").write_text(PROFILE, encoding="utf-8")
+    (cwd / "portfolio" / "sources" / "web-blog.md").write_text("서버 비용 월 $30.37, Spring Boot 3.2.3", encoding="utf-8")
+    lint = SCRIPTS / "facts_lint.py"
+
+    def prov(name, lines, code, has=(), lacks=()):
+        (facts / "dms.md").write_text(PROJECT + "\n## 추가\n" + lines + "\n", encoding="utf-8")
+        c, o = run([str(lint), str(facts)])
+        check(name, c, o, code, has, lacks)
+    base_ok = ("- 조회 1,225ms → 241ms `[src: interview]`\n- 월 사용자 약 300명, 학생 650명 `[src: interview]`\n"
+               "- 팀 4명, p95 512ms `[src: interview]`\n- 비용 $30.37, Boot 3.2 `[src: doc:web-blog.md]`\n- 배포 2026.03 `[src: interview]`")
+    # PROJECT 픽스처 자체의 줄(요청 10개 등)은 이 근거 원문에 없어 ERROR가 날 수 있으므로 종료 코드는 보지 않는다
+    prov("facts_lint 근거 원문·받은 자료에 있는 수치 → 대조 통과", base_ok, None, (), ("없는 수치 1,225", "없는 수치 300", "없는 수치 30.37", "없는 수치 3.2", "없는 수치 2026.03"))
+    prov("facts_lint 사용자가 연도 없이 말한 날짜에 연도를 붙임 → ERROR[확인]", "- 출시 2025.03 `[src: interview]`", 1, ("없는 수치 2025.03",))
+    prov("facts_lint 지어낸 수치 → ERROR[확인]", "- 응답 시간 4,321ms로 개선 `[src: interview]`", 1, ("ERROR[확인]", "없는 수치 4,321"))
+    prov("facts_lint 모델이 말하거나 질문에만 쓴 수치(9,999·8,888)는 근거 아님", "- 9,999ms, 8,888명 `[src: interview]`", 1, ("9,999", "8,888"))
+    prov("facts_lint 다른 자료에 있는 수치 → 출처 태그 ERROR[수정]", "- 비용 $30.37 `[src: interview]`", 1, ("ERROR[수정]", "doc:web-blog.md"))
+    prov("facts_lint 개선 전·후가 원문 한 곳에 같이 없음 → ERROR[확인]", "- 조회 300ms → 241ms `[src: interview]`", 1, ("원문 한 곳에 같이",))
+    prov("facts_lint 이미지 자료가 근거인 줄은 WARN만", "- Gatling 13:57 결과 `[src: doc:img-gatling.png, interview]`", None, ("이미지 자료에서 읽은 수치",), ("없는 수치 13",))
+    prov("facts_lint 이미지 목록·URL·파일 이름의 숫자는 대조 안 함", "- 블로그 https://velog.io/@a/post-2024 참고 `[src: interview]`", None, (), ("2024",))
+    log.unlink()
+    prov("facts_lint 근거 원문 기록이 없으면 대조 건너뜀(WARN, 옛 기록)", "- 응답 시간 4,321ms `[src: interview]`", None, ("대조를 건너뛴다",), ("없는 수치",))
+
+    # 환경 점검
+    c, o = run([str(SCRIPTS / "env_check.py"), "--offline"], env={"PATH": str(tmp / "empty-bin")})
+    check("env_check Chrome·poppler 없으면 실패 + 설치 안내", c, o, 1, ("Chrome/Chromium이 없다", "poppler", "설치:", "환경 점검: 실패"))
+    c, o = run([str(SCRIPTS / "env_check.py"), "--offline"])
+    check("env_check 이 개발 환경 → 통과", c, o, 0 if shutil.which("pdfinfo") and any(shutil.which(n) for n in ("google-chrome", "chromium")) else None, ("Python",))
+
+
 def image_tests(tmp: Path) -> None:
     d = tmp / "imgs"
     d.mkdir()
@@ -852,6 +930,7 @@ def main() -> int:
         docs_tests()
         facts_tests(tmp)
         pair_tests(tmp)
+        provenance_tests(tmp)
         layout_tests(tmp)
         upload_tests(tmp)
         link_tests(tmp)
