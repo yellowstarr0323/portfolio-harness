@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """포트폴리오 HTML → PDF 출력과 검증.
 
-사용법: export.py <portfolio/out/index.html> <a4|continuous> <출력 pdf 경로> [--reference]
+사용법: export.py <portfolio/out/index.html> <a4|continuous> <출력 pdf 경로>
 
 0. 사전 검증: 옆에 facts/가 있으면 facts_lint.py와 check_numbers.py(본문 수치 근거·내부 용어), 그리고 layout_check.py(세부 설명의 이야기 모양, D-DES-13). 실패면 PDF를 만들지 않는다
 1. out/ 디렉터리를 로컬 http 서버로 띄운다 (file:// 이면 웹폰트·이미지가 안 뜰 수 있음)
@@ -45,8 +45,9 @@
 3. PDF 출력 후 쪽수 검증 (a4: .sheet 개수와 같아야 함, continuous: 1쪽)
 4. HTML 텍스트와 PDF 텍스트의 문자 구성 대조 (<title>, 인쇄에서 숨기는 data-print-hidden 요소 제외)
 5. 링크 검사(link_check.py, D-DES-14): 보이는 주소는 모두 <a href>, href는 절대 주소, PDF에서 누를 수 있음, 실제로 열림(404·없는 도메인 실패)
-레퍼런스 모드(D-DES-16): 옆의 design.json에서 style.source가 "reference"이거나 --reference를 주면 레퍼런스를 그대로
-따른 결과물로 보고 **내용 검사만** 한다. 디자인 검사(레이아웃 사전 검증, 측정 화면 짝, 첫머리·블록 순서·기간 형식·필수 이미지,
+레퍼런스 모드(D-DES-16): 옆의 design.json에서 style.source가 "reference"이고 레퍼런스 근거가 있으면
+(design/scripts/reference_check.py: reference 파일이 있고 이름이, URL이면 URL이 sources/interview-log.md에 있음)
+레퍼런스를 그대로 따른 결과물로 보고 **내용 검사만** 한다. 근거가 없으면 이유를 한 줄 출력하고 일반 검사를 그대로 돈다. 디자인 검사(레이아웃 사전 검증, 측정 화면 짝, 첫머리·블록 순서·기간 형식·필수 이미지,
 채움·여백, 글자 크기·역할·분포, 머리글, 흐릿함)는 돌리지 않는다. 남는 것: 기록·수치 사전 검증, 이미지 로드 실패(빠진 내용),
 넘침(내용이 잘림), 쪽수, 텍스트 대조(내용 누락), 링크.
 종료 코드: 모두 통과 0, 하나라도 실패 1, 실행 불가 2. 여백 경고만 있으면 0.
@@ -63,6 +64,8 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from htmltext import visible_text  # noqa: E402
+sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "design" / "scripts"))
+from reference_check import reference_problem  # noqa: E402
 
 GAP_WARN = 0.25   # 가장 큰 빈 띠가 내용 영역 높이의 이 비율 이상이면 경고
 FILL_MIN = 0.50   # 마지막 쪽을 뺀 모든 쪽의 최소 채움 (여백 50% 상한, 사용자 결정 2026-10-09: 40% → 50%)
@@ -172,15 +175,22 @@ def report_fill(sheets: list[dict]) -> bool:
 
 
 def reference_mode(portfolio: Path) -> bool:
-    """design.json의 style.source가 reference면 레퍼런스를 그대로 따른 결과물이다(D-DES-16)."""
+    """design.json의 style.source가 reference이고 사용자가 레퍼런스를 줬다는 근거가 있으면
+    레퍼런스를 그대로 따른 결과물이다(D-DES-16). 근거가 없으면 이유를 출력하고 일반 검사로 간다."""
     try:
         style = json.loads((portfolio / "design.json").read_text(encoding="utf-8")).get("style") or {}
     except (OSError, ValueError):
         return False
-    return style.get("source") == "reference"
+    if style.get("source") != "reference":
+        return False
+    why = reference_problem(style, portfolio)
+    if why:
+        print(f"레퍼런스 모드 안 켬: {why}. 일반 디자인 검사를 그대로 한다 (D-DES-16)")
+        return False
+    return True
 
 
-def main(html_path: str, fmt: str, pdf_out: str, ref: bool = False) -> int:
+def main(html_path: str, fmt: str, pdf_out: str) -> int:
     for tool in ("pdfinfo", "pdftotext"):
         if not shutil.which(tool):
             sys.exit(f"{tool}이 없다 (sudo apt install poppler-utils)")
@@ -193,7 +203,7 @@ def main(html_path: str, fmt: str, pdf_out: str, ref: bool = False) -> int:
     # 사전 검증: portfolio/out/index.html이면 옆의 portfolio/facts를 먼저 검사한다.
     # 입력(기록)에 ERROR가 있으면 PDF를 만들지 않는다. 같은 입력이면 facts_lint 캐시를 재사용한다.
     portfolio = root.parent
-    ref = ref or reference_mode(portfolio)
+    ref = reference_mode(portfolio)
     if ref:
         print("레퍼런스 모드: 배치·색·글자 같은 디자인 검사는 하지 않고 내용만 검사한다 (D-DES-16)")
     if (portfolio / "facts").is_dir():
@@ -386,8 +396,8 @@ def main(html_path: str, fmt: str, pdf_out: str, ref: bool = False) -> int:
 
 
 if __name__ == "__main__":
-    argv = [a for a in sys.argv[1:] if a != "--reference"]
+    argv = sys.argv[1:]
     if len(argv) != 3 or argv[1] not in ("a4", "continuous"):
         print(__doc__)
         sys.exit(2)
-    sys.exit(main(*argv, ref="--reference" in sys.argv[1:]))
+    sys.exit(main(*argv))

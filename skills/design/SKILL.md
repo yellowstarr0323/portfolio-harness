@@ -71,7 +71,7 @@ description: 포트폴리오의 시각적 디자인과 페이지 구성을 결�
 
 1. **사용자가 준 파일·URL만 연다.** 이미지·PDF는 `Read`(PDF는 모든 쪽), HTML은 파일을 읽어 CSS 값을 그대로 가져온다. 같은 폴더의 다른 파일을 찾아 읽지 않는다. URL을 못 가져오면 "열지 못했다"고 말하고 스크린샷이나 파일을 달라고 한다. 열지 못한 레퍼런스를 본 것처럼 정하지 않는다.
 2. 쪽마다 무엇이 어디에 어떤 크기로 있는지 `style.referenceLayout`(쪽별 서술, 문자열 배열)에 적는다: 쪽 크기(A4·연속), 1쪽 구성, 프로젝트 쪽의 블록 순서와 배치(열 수, 이미지 위치·크기), 제목·본문·캡션 크기와 굵기, 색(면 색 포함), 글꼴, 구분선·라벨·칩 같은 장식, 여백. build가 이것과 원본을 보고 HTML을 쓴다.
-3. `style`: `source: "reference"`, `reference`(경로·URL), `accent`·`colors`(레퍼런스 색 그대로, #rrggbb), `font`(`variants.json`에 같은 글꼴이 있으면 그 키, 없으면 `{"imports": [...], "body": "...", "display": ...}` — 한글 웹폰트. 못 구하면 가장 비슷한 것을 쓰고 끝 보고에 "OO 대신 OO" — 끝 보고에 적는 것은 이것뿐), `heading`(`plain`/`bar`/`rule` 중 가장 가까운 것, 실제 모양은 `extraCss`가 덮어도 된다), `fontScale`(레퍼런스 크기 그대로, 범위 제한 없음), `extraCss`(배치·장식을 `portfolio/theme/extra.css`에 제한 없이), `why`("레퍼런스 그대로").
+3. `style`: `source: "reference"`, `reference`(경로·URL), `accent`·`colors`(레퍼런스 색 그대로, #rrggbb), `font`(`variants.json`에 같은 글꼴이 있으면 그 키, 없으면 `{"imports": [...], "body": "...", "display": ...}` — 한글 웹폰트. 못 구하면 가장 비슷한 것을 쓰고 끝 보고에 "OO 대신 OO" — 끝 보고에 적는 것은 이것뿐), `heading`(`plain`/`bar`/`rule` 중 가장 가까운 것, 실제 모양은 `extraCss`가 덮어도 된다), `fontScale`(레퍼런스 크기 그대로, 범위 제한 없음), `extraCss`(배치·장식을 `portfolio/theme/extra.css`에 제한 없이), `why`("레퍼런스 그대로"). `reference`에는 사용자가 말한 경로·URL을 그대로 적는다 — 파일은 실제로 있고 그 이름이, URL은 그 주소가 `sources/interview-log.md`(사용자 말 원문)에 있어야 레퍼런스 모드가 켜진다(`make_theme.py`가 아니면 실패). 사용자가 레퍼런스를 주지 않았으면 `reference`로 바꾸지 않는다.
 4. `pagePlan`은 레퍼런스의 쪽 구성대로 쓴다. 레이아웃 키는 정하지 않아도 된다. `imageSlots`는 레퍼런스의 이미지 자리에 맞춘다(기록된 이미지는 비슷한 자리에, 레퍼런스에 자리가 없으면 쓰지 않아도 된다).
 5. **내용은 바꾸지 않는다.** 레퍼런스에 있는 칸이 기록에 없으면 비우거나 칸을 뺀다. 기록에 있는데 레퍼런스에 자리가 없는 내용은 비슷한 블록 모양으로 넣는다.
 

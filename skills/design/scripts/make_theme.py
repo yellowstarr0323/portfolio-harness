@@ -24,7 +24,9 @@ style 형식 (design.json)
 
 검사 (어기면 종료 코드 1, 파일을 쓰지 않는다)
   - source: reference (D-DES-16): 레퍼런스를 그대로 따른다. 아래 디자인 조건(대비·띠 대비·글자 범위·글꼴 주소·
-    extraCss 금지 선언)은 검사하지 않고, 값의 형식(#rrggbb, 숫자pt, 파일 있음)만 본다
+    extraCss 금지 선언)은 검사하지 않고, 값의 형식(#rrggbb, 숫자pt, 파일 있음)만 본다.
+    단 레퍼런스 근거가 있어야 한다(reference_check.py): reference가 있고, 파일이면 실제로 있고 이름이,
+    URL이면 그 URL이 sources/interview-log.md(사용자 말 원문)에 있어야 한다
   - 흰 바탕 대비: 본문·보조·강조색 4.5:1 이상, 강조색 위 흰 글자 4.5:1 이상
   - 머리 띠가 있는 look: 띠 위 글자·보조 글자 대비 4.5:1 이상
   - 글자 크기는 역할 범위 안 (rules/user-decisions.md D-DES-3)
@@ -42,6 +44,7 @@ HERE = Path(__file__).resolve().parent
 THEME = HERE.parent / "theme"
 sys.path.insert(0, str(HERE))
 from contrast import ratio  # noqa: E402
+from reference_check import reference_problem  # noqa: E402
 
 VARIANTS = json.loads((THEME / "variants.json").read_text(encoding="utf-8"))
 FS_VARS = {"name": "--fs-name", "pageTitle": "--fs-page-title", "section": "--fs-section", "subtitle": "--fs-subtitle",
@@ -68,6 +71,8 @@ def resolve(style: dict, root: Path) -> tuple[dict, list[str]]:
     if src not in ("auto", "user", "reference"):
         errs.append(f"style.source는 auto·user·reference 중 하나 — `{src}`")
     ref = src == "reference"
+    if ref and (why := reference_problem(style, root)):
+        errs.append(f"레퍼런스 근거 없음 — {why}")
     look = style.get("look", "minimal")
     if look not in VARIANTS["looks"]:
         errs.append(f"전체 스타일 `{look}`이 없다 ({', '.join(VARIANTS['looks'])})")

@@ -284,19 +284,31 @@ def export_tests(tmp: Path) -> None:
         ("export 레퍼런스 모드: 주소를 글자로만 씀 → 여전히 실패 (내용 검사)", {**design_broken, "links": "plain"}, 1,
          ("레퍼런스 모드", "주소가 링크가 아니다"), ()),
     ]
-    for i, (name, opts, code, has, lacks) in enumerate(ref_cases):
-        html = out / f"ref{i}.html"
-        html.write_text(portfolio_html(**opts), encoding="utf-8")
-        c, o = run([str(SCRIPTS / "export.py"), str(html), "a4", str(out / f"ref{i}.pdf"), "--reference"])
-        check(name, c, o, code, has, lacks)
-    # design.json의 style.source로 레퍼런스 모드를 스스로 켜는지, 넘침(내용 잘림)은 여전히 잡는지
+    # 레퍼런스 모드는 design.json(source=reference)과 근거(사용자가 말한 파일)가 있을 때만 켜진다
     rp = tmp / "refpf"
     shutil.copytree(out, rp / "out", ignore=shutil.ignore_patterns("*.pdf", "*.html"))
+    (rp / "ref.pdf").write_bytes(b"%PDF-1.4")
+    (rp / "sources").mkdir()
+    (rp / "sources" / "interview-log.md").write_text("## 2026-10-10 10:00 질문 답\n- 있어 — ref.pdf\n", encoding="utf-8")
     (rp / "design.json").write_text(json.dumps({"style": {"source": "reference", "reference": "ref.pdf"}}), encoding="utf-8")
+    for i, (name, opts, code, has, lacks) in enumerate(ref_cases):
+        html = rp / "out" / f"ref{i}.html"
+        html.write_text(portfolio_html(**opts), encoding="utf-8")
+        c, o = run([str(SCRIPTS / "export.py"), str(html), "a4", str(rp / "out" / f"ref{i}.pdf")])
+        check(name, c, o, code, has, lacks)
+    # 넘침(내용 잘림)은 레퍼런스 모드에서도 잡는지
     (rp / "out" / "index.html").write_text(portfolio_html(**design_broken).replace(
         '<div class="pn" data-role="page-number">1 / 2</div>', '<div style="height:3000px">넘침</div><div class="pn" data-role="page-number">1 / 2</div>'), encoding="utf-8")
     c, o = run([str(SCRIPTS / "export.py"), str(rp / "out" / "index.html"), "a4", str(rp / "out" / "x.pdf")])
     check("export design.json source=reference → 레퍼런스 모드, 넘침은 여전히 실패", c, o, 1, ("레퍼런스 모드", "넘침  sheet 1"), ("data-layout이 없다",))
+    # 근거 없이 source만 reference로 바꾸면 레퍼런스 모드가 켜지지 않고 디자인 검사를 그대로 한다
+    np_ = tmp / "refpf-noevidence"
+    shutil.copytree(out, np_ / "out", ignore=shutil.ignore_patterns("*.pdf", "*.html"))
+    (np_ / "design.json").write_text(json.dumps({"style": {"source": "reference", "reference": None}}), encoding="utf-8")
+    (np_ / "out" / "index.html").write_text(portfolio_html(**design_broken), encoding="utf-8")
+    c, o = run([str(SCRIPTS / "export.py"), str(np_ / "out" / "index.html"), "a4", str(np_ / "out" / "x.pdf")])
+    check("export source=reference인데 reference 없음 → 레퍼런스 모드 안 켬, 디자인 검사 실패", c, o, 1,
+          ("레퍼런스 모드 안 켬", "style.reference가 비어 있다", "data-layout이 없다"), ("내용만 검사한다",))
     lsrv.shutdown()
     lsrv.server_close()
 
@@ -667,6 +679,12 @@ def theme_tests(tmp: Path) -> None:
         if extra is not None:
             (d / "theme").mkdir()
             (d / "theme" / "extra.css").write_text(extra)
+        if style.get("source") == "reference" and "reference" not in style:   # 근거: 사용자가 말한 레퍼런스 파일
+            style = {**style, "reference": "ref.pdf"}
+        if style.get("reference") == "ref.pdf":
+            (d / "ref.pdf").write_bytes(b"%PDF-1.4")
+            (d / "sources").mkdir()
+            (d / "sources" / "interview-log.md").write_text("- 있어 — ~/바탕화면/ref.pdf\n", encoding="utf-8")
         (d / "design.json").write_text(json.dumps({"style": style}, ensure_ascii=False))
         c, o = run([str(MAKE_THEME), str(d / "design.json"), str(d / "theme")])
         check(name, c, o, code, has, lacks)
@@ -678,6 +696,11 @@ def theme_tests(tmp: Path) -> None:
     case("make_theme 레퍼런스 배치 CSS에 font-size·.sheet → 통과", {"source": "reference", "accent": "#1e59d6", "font": "plex", "heading": "bar", "extraCss": "theme/extra.css"},
          0, ("테마 작성",), extra=':root [data-role="section-title"] { font-size: 30pt; } .sheet { display: grid; }')
     case("make_theme 레퍼런스도 색 형식은 검사 → 실패", {"source": "reference", "accent": "blue", "font": "plex", "heading": "bar"}, 1, ("#rrggbb",))
+    # 레퍼런스 근거(reference_check.py): 근거 없이 source만 reference로 바꿔 디자인 검사를 끄지 못한다
+    case("make_theme source=reference인데 reference 없음 → 실패", {"source": "reference", "reference": None, "accent": "#7fb2ff", "font": "plex", "heading": "bar"},
+         1, ("레퍼런스 근거 없음", "비어 있다"))
+    case("make_theme source=reference인데 없는 파일 → 실패", {"source": "reference", "reference": "nope.pdf", "accent": "#1e59d6", "font": "plex", "heading": "bar"},
+         1, ("레퍼런스 근거 없음", "레퍼런스 파일이 없다"))
     case("make_theme 사용자 선택 글자 크기 범위 밖 → 실패", {"source": "user", "accent": "#1e59d6", "font": "plex", "heading": "bar", "fontScale": {"body": "9pt"}}, 1, ("D-DES-3",))
     d = case("make_theme 레퍼런스 글꼴·색·장식 → 통과", {"source": "reference", "reference": "ref.pdf", "accent": "#1e59d6",
              "font": {"imports": ["https://fonts.googleapis.com/css2?family=Gowun+Dodum&display=swap"], "body": "\"Gowun Dodum\", sans-serif", "display": None},
@@ -706,6 +729,35 @@ def theme_tests(tmp: Path) -> None:
     tok = (d / "theme" / "tokens.css").read_text()
     ok = "--band-bg: #0f766e;" in tok and "Nanum+Myeongjo" in tok and "look-color-band" not in tok and "머리 띠" in (d / "theme" / "style.css").read_text()
     results.append(("make_theme 컬러 띠 토큰·스타일", ok, "ok" if ok else tok[:300]))
+
+
+def reference_tests(tmp: Path) -> None:
+    """design/scripts/reference_check.py — 레퍼런스 모드를 켜도 되는 근거 판정 (D-DES-16)."""
+    rc = ROOT / "skills" / "design" / "scripts" / "reference_check.py"
+    absfile = tmp / "elsewhere" / "sample-portfolio.pdf"
+    absfile.parent.mkdir()
+    absfile.write_bytes(b"%PDF-1.4")
+
+    def rcase(name, ref, log, code, has, files=()):
+        d = tmp / f"rc-{len(results)}"
+        d.mkdir()
+        for f in files:
+            (d / f).parent.mkdir(parents=True, exist_ok=True)
+            (d / f).write_bytes(b"x")
+        if log is not None:
+            (d / "sources").mkdir(exist_ok=True)
+            (d / "sources" / "interview-log.md").write_text(log, encoding="utf-8")
+        (d / "design.json").write_text(json.dumps({"style": {"source": "reference", "reference": ref}}), encoding="utf-8")
+        c, o = run([str(rc), str(d)])
+        check(name, c, o, code, has)
+    rcase("reference_check reference=null → 근거 없음", None, "- 있어", 1, ("비어 있다",))
+    rcase("reference_check 없는 파일 경로 → 근거 없음", "refs/ghost.pdf", "- refs/ghost.pdf", 1, ("레퍼런스 파일이 없다",))
+    rcase("reference_check 있는 파일(상대 경로)·원문에 이름 있음 → 근거 있음", "refs/ref.png", "- 있어 — ~/다운로드/ref.png", 0, ("근거: 있음",), files=("refs/ref.png",))
+    rcase("reference_check 있는 파일(절대 경로)·원문에 이름 있음 → 근거 있음", str(absfile), f"- {absfile}", 0, ("근거: 있음",))
+    rcase("reference_check 있는 파일인데 사용자가 말한 적 없음 → 근거 없음", "out/x.pdf", "- 없어 — 알아서 정해줘", 1, ("원문", "x.pdf"), files=("out/x.pdf",))
+    rcase("reference_check URL이 원문에 있음 → 근거 있음", "https://example.com/folio/", "이거 참고해줘 https://example.com/folio", 0, ("근거: 있음",))
+    rcase("reference_check URL이 원문에 없음 → 근거 없음", "https://example.com/folio", "- 없어 — 알아서 정해줘", 1, ("URL", "원문"))
+    rcase("reference_check URL인데 원문 기록 파일 없음 → 근거 없음", "https://example.com/folio", None, 1, ("확인할 수 없다",))
 
 
 def env_tests(tmp: Path) -> None:
@@ -1018,6 +1070,7 @@ def main() -> int:
         image_tests(tmp)
         env_tests(tmp)
         theme_tests(tmp)
+        reference_tests(tmp)
         if not fast:
             export_tests(tmp)
     width = max(len(n) for n, _, _ in results)
