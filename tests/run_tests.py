@@ -617,7 +617,13 @@ def provenance_tests(tmp: Path) -> None:
     prov("facts_lint 모델이 말하거나 질문에만 쓴 수치(9,999·8,888)는 근거 아님", "- 9,999ms, 8,888명 `[src: interview]`", 1, ("9,999", "8,888"))
     prov("facts_lint 다른 자료에 있는 수치 → 출처 태그 ERROR[수정]", "- 비용 $30.37 `[src: interview]`", 1, ("ERROR[수정]", "doc:web-blog.md"))
     prov("facts_lint 개선 전·후가 원문 한 곳에 같이 없음 → ERROR[확인]", "- 조회 300ms → 241ms `[src: interview]`", 1, ("원문 한 곳에 같이",))
-    prov("facts_lint 이미지 자료가 근거인 줄은 WARN만", "- Gatling 13:57 결과 `[src: doc:img-gatling.png, interview]`", None, ("이미지 자료에서 읽은 수치",), ("없는 수치 13",))
+    prov("facts_lint 이미지 자료만 근거인 줄은 WARN만", "- Gatling 13:57 결과 `[src: doc:img-gatling.png]`", None, ("이미지 자료에서 읽은 수치", "dms.md: 13, 57"), ("없는 수치 13",))
+    prov("facts_lint 이미지+글자 태그 섞인 줄의 없는 수치 → ERROR[확인]", "- 응답 시간 4,321ms `[src: interview, doc:img-gatling.png]`", 1,
+         ("ERROR[확인]", "없는 수치 4,321", "이미지 태그만 단다"), ("이미지 자료에서 읽은 수치",))
+    prov("facts_lint 이미지+글자 자료 태그 섞인 개선 전·후 짝 → ERROR[확인]", "- 조회 300ms → 241ms `[src: doc:web-blog.md, interview, doc:img-x.png]`", 1,
+         ("원문 한 곳에 같이", "이미지 태그만 단다"), ("이미지 자료에서 읽은 수치",))
+    prov("facts_lint 이미지+글자 태그 섞여도 원문에 있는 수치 → 통과", "- 조회 1,225ms → 241ms `[src: interview, doc:img-gatling.png]`", None, (),
+         ("없는 수치 1,225", "원문 한 곳에 같이", "이미지 자료에서 읽은 수치"))
     prov("facts_lint 이미지 목록·URL·파일 이름의 숫자는 대조 안 함", "- 블로그 https://velog.io/@a/post-2024 참고 `[src: interview]`", None, (), ("2024",))
     log.unlink()
     prov("facts_lint 근거 원문 기록이 없으면 대조 건너뜀(WARN, 옛 기록)", "- 응답 시간 4,321ms `[src: interview]`", None, ("대조를 건너뛴다",), ("없는 수치",))

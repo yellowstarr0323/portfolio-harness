@@ -366,6 +366,8 @@ def lint_provenance(facts: Path, sources: Path, iss: Issues) -> None:
                 block_tags = own
             docs = [t[4:] for t in tags if t.startswith("doc:")]
             from_image = any(Path(d).suffix.lower() in IMAGE_EXT for d in docs)
+            # 이미지 태그만 있을 때만 글자 대조를 건너뛴다. 글자 태그(interview·글자 자료)와 섞이면 글자 원문으로 대조한다
+            image_only_tags = from_image and "interview" not in tags and all(Path(d).suffix.lower() in IMAGE_EXT for d in docs)
             # 출처 태그가 가리키는 원문만 본다: interview → 사용자 말, doc:X → 그 자료. 태그가 없으면 전부
             names = {"interview"} if "interview" in tags else set()
             names |= {d for d in docs if Path(d).suffix.lower() not in IMAGE_EXT}
@@ -383,7 +385,9 @@ def lint_provenance(facts: Path, sources: Path, iss: Issues) -> None:
             split = [f"{a} → {b}" for a, b in ((x.rstrip(",."), y.rstrip(",.")) for x, y in ARROW.findall(clean))
                      if a not in missing and b not in missing
                      and not any(norm(a) in nums and norm(b) in nums for nums in pool)]
-            if (missing or split) and from_image:  # 이미지에서 읽은 수치는 글자로 대조할 수 없다
+            mixed = ("이미지에서 읽은 수치면 그 줄은 이미지 태그만 단다(글자 태그와 섞으면 글자 원문으로 대조한다). "
+                     if from_image else "")
+            if (missing or split) and image_only_tags:  # 이미지에서 읽은 수치는 글자로 대조할 수 없다
                 image_only.append(f"{path.name}: {', '.join(missing + split)}")
             elif missing and (elsewhere := sorted({name for name, nums in entries if name not in names
                                                     and all(all(v in nums for v in fact_values(t)) for t in missing)})):
@@ -391,10 +395,10 @@ def lint_provenance(facts: Path, sources: Path, iss: Issues) -> None:
                 iss.fix(path.name, section or "-", f"수치 {', '.join(missing)}가 출처 태그({', '.join(tags) or '없음'})가 아니라 "
                         f"{', '.join(fix)}에 있다 — \"{line.strip()[:80]}\"", f"출처 태그에 {', '.join(fix)}를 더한다(사용자 말이 근거가 아니면 interview는 뺀다)")
             elif missing:
-                iss.ask(path.name, section or "-", f"사용자가 한 말·받은 자료에 없는 수치 {', '.join(missing)} — \"{line.strip()[:80]}\"", how)
+                iss.ask(path.name, section or "-", f"사용자가 한 말·받은 자료에 없는 수치 {', '.join(missing)} — \"{line.strip()[:80]}\"", mixed + how)
             elif split:
                 iss.ask(path.name, section or "-", f"개선 전·후 수치 {', '.join(split)}가 원문 한 곳에 같이 나온 적이 없다 — \"{line.strip()[:80]}\"",
-                        "두 값을 사용자가 따로 말했거나 다른 자료에서 왔다. 짝이 맞는지 \"A → B\" 그대로 선택지에 넣어 확인받는다. " + how.split(". ", 1)[0] + ".")
+                        mixed + "두 값을 사용자가 따로 말했거나 다른 자료에서 왔다. 짝이 맞는지 \"A → B\" 그대로 선택지에 넣어 확인받는다. " + how.split(". ", 1)[0] + ".")
     if year_only:
         iss.warn("-", "근거 원문", f"사용자가 월만 말한 날짜에 대화한 해를 붙였다 — {' / '.join(year_only)}",
                  "연도가 맞는지 끝 보고나 다음 질문에서 한 번 확인받는다. 다른 해면 기록을 고친다")
