@@ -1,0 +1,77 @@
+{
+  "schemaVersion": 7,
+  "format": "a4",
+  "theme": "by-style",
+  "style": {
+    "source": null,
+    "reference": null,
+    "referenceLayout": null,
+    "look": null,
+    "accent": null,
+    "font": null,
+    "heading": null,
+    "why": null
+  },
+  "layoutPrefs": {
+    "screen": null
+  },
+  "designSource": {
+    "tool": "ui-ux-pro-max@2.13.0",
+    "style": "Minimalism & Swiss Style (레퍼런스가 없을 때의 바탕)",
+    "note": "2026-10-10 사용자 결정(D-DES-15): 레퍼런스를 묻고 있으면 배치·색·글꼴까지 그대로 따른다(D-DES-16, 디자인 검사 없음). 없으면 첫 PDF는 minimal 기본값으로 만들고, 첫 PDF 뒤 사용자가 실제 쪽 시안(make_previews.py)을 보고 전체 스타일·강조색·글꼴·서비스 화면 배치를 고른다. 값은 make_theme.py가 tokens.css·style.css로 만든다. 실행 중에는 ui-ux-pro-max를 부르지 않는다"
+  },
+  "sections": [
+    "profile-page",
+    "projects"
+  ],
+  "pagePlan": null,
+  "imageSlots": [],
+  "updated": null,
+  "layouts": {
+    "profile": "1쪽 전용. 이름 → 한 줄 소개 → (왼쪽 라벨 열 30mm + 본문 열) 자기소개·연락처·기술·활동·수상·자격증 (활동·수상은 항목마다 날짜를 오른쪽에)",
+    "project-overview": "프로젝트 시작 쪽. 로고·이름(같은 줄 오른쪽 기간) → 한 줄 소개 → 팀원 → 사용 기술 → 기능 소개(+서비스 화면) → 주요 성과",
+    "problem-solving": "원인을 파고든 분석이 핵심일 때만. 섹션 제목 → 한 줄 결과 → 라벨 단계 목록(.steps: 상황·원인·해결·결과) → before→after(.ba) + 측정 조건. 측정 화면은 결과 옆이나 아래. 한 프로젝트에 한 번이 기본",
+    "metric-compare": "수치가 단계적으로 바뀐 개선. 대표 수치(.ba-lead)를 섹션 맨 위에 → 단계 카드(.stage-cards: 단계마다 무엇을 했고 수치가 어떻게 됐나)를 나란히 → 측정 조건 → 측정 화면 짝",
+    "timeline": "시간 순으로 벌어진 일(발견 → 원인 → 수정, 기간·날짜가 있는 장애·버그). 세로 타임라인(.timeline: 시점 + 한 일)",
+    "flow-compare": "사람·업무 흐름을 바꾼 기능. 기존 흐름과 바뀐 흐름을 나란히(.flow-compare: 단계 상자 + 아래 화살표) → 협업·일정 같은 부가 이야기는 아래 짧게",
+    "process-flow": "처리 단계가 핵심인 기능(파이프라인). 번호 붙은 단계 상자를 가로로 잇는다(.process-flow) → 아래에 핵심 설계 포인트",
+    "architecture": "구조도가 핵심인 쪽. 인라인 SVG 또는 다이어그램 이미지를 본문 폭 전체로 → 아래에 구성 요소 설명(1~2열)",
+    "decision": "기술 선택. 채택한 결정 카드(--accent-tint, 왼쪽 강조선) 안에 이유 → 같은 카드 아래쪽에 대안과 트레이드오프",
+    "code": "핵심 코드 일부(--fs-code 이상, 15줄 이하) + 옆이나 아래 설명. 긴 코드는 줄이지 않고 필요한 부분만 발췌",
+    "retrospective": "프로젝트 마지막. 전체 회고 — 작업별 회고를 모두 모아 작업 이름 라벨 + 원문 인용 목록",
+    "text": "단일 열 본문. 소제목으로 구분, 다단은 읽기 순서가 분명할 때만",
+    "image-feature": "이미지가 핵심. 큰 이미지(원본 비율) + 캡션 + 짧은 설명"
+  },
+  "schemas": {
+    "imageSlots[]": {
+      "id": "영문 kebab-case",
+      "file": "portfolio/images/ 아래 경로 (필수 — 실제로 있는 파일만. 파일 없는 빈 자리는 만들지 않는다)",
+      "kind": "logo | screen | capture | measure | photo | diagram",
+      "project": "프로젝트 slug (1쪽 이미지면 null)",
+      "placement": "블록 기준 위치. 예: 'dms 첫머리 이름 왼쪽', 'dms 상벌점 조회 섹션 결과 아래'",
+      "size": "레이아웃에서 차지하는 폭×높이 px (원본 비율 유지). measure는 본문 폭 절반 이하",
+      "pair": "측정 화면(kind: measure)일 때만. 개선 전·후 두 장에 같은 값('<slug>-<작업>'). 같은 pair는 같은 쪽에 나란히"
+    },
+    "pagePlan[]": {
+      "page": "쪽 번호 (1부터, 시작 예상치 — build가 넘치거나 남으면 다시 나눈다)",
+      "purpose": "이 쪽이 독자에게 보여줄 것 한 문장",
+      "layout": "layouts의 키 하나",
+      "project": "프로젝트 slug (1쪽이면 null)",
+      "sections": "[{ 'title': 섹션 제목, 'layout': layouts의 키(세부 설명 작업이면 필수 — 이야기 모양, D-DES-13), 'repeatReason': 같은 프로젝트에서 이미 쓴 키를 다시 쓸 때만 그 이유, 'facts': 'dms.md#작업 이름' }]",
+      "images": "[imageSlots의 id]"
+    },
+    "layoutPrefs": {
+      "screen": "wide | side | null — 서비스 화면 배치(D-DES-15, variants.json screenLayouts). null이면 화면 비율로 AI가 정한다"
+    }
+  },
+  "projectOrder": [
+    "logo·name·period",
+    "summary",
+    "team",
+    "tech",
+    "features",
+    "highlights",
+    "details",
+    "retro"
+  ]
+}

@@ -1,0 +1,18 @@
+# Python
+__pycache__/
+*.pyc
+
+# oh-my-claudecode 세션 상태
+.omc/
+
+# 플러그인을 테스트하며 생기는 사용자 작업물
+portfolio/
+
+# 에디터 / OS
+.vscode/
+.idea/
+*.swp
+.DS_Store
+
+# 테스트 PDF 수집 설정 (Discord 웹훅 URL = 비밀값). zip에만 넣고 레포에는 올리지 않는다
+upload.json

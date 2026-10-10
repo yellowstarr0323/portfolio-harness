@@ -1,0 +1,127 @@
+{
+  "_note": "고르는 축: 전체 스타일(looks) × 강조색 × 글꼴 × 제목 모양. 레퍼런스가 없으면 첫 PDF 뒤에 사용자가 시안을 보고 고른다(D-DES-15). 값을 바꾸면 tests/run_tests.py의 테마 테스트를 돌린다. 강조색은 모두 흰 바탕 대비 4.5:1 이상(contrast.py).",
+  "looks": {
+    "minimal": {
+      "label": "미니멀 — 흰 종이, 선과 여백으로만 구분",
+      "band": null
+    },
+    "editorial": {
+      "label": "에디토리얼 — 굵은 제목과 검은 가는 선, 잡지처럼 차분하게 (세리프 제목 글꼴과 잘 맞음)",
+      "band": null
+    },
+    "color-band": {
+      "label": "컬러 띠 — 1쪽 머리와 프로젝트 첫머리를 강조색 띠로",
+      "band": {
+        "bg": "accent",
+        "text": "#ffffff"
+      }
+    },
+    "dark-header": {
+      "label": "다크 헤더 — 1쪽 머리와 프로젝트 첫머리를 어두운 띠로",
+      "band": {
+        "bg": "#16181d",
+        "text": "#ffffff"
+      }
+    }
+  },
+  "accents": {
+    "sky": "#0369a1",
+    "blue": "#1e59d6",
+    "indigo": "#4338ca",
+    "violet": "#6d28d9",
+    "teal": "#0f766e",
+    "green": "#15803d",
+    "amber": "#b45309",
+    "orange": "#c2410c",
+    "rose": "#be123c",
+    "slate": "#334155"
+  },
+  "fonts": {
+    "pretendard": {
+      "label": "산세리프 단일 (Pretendard)",
+      "imports": [
+        "https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css"
+      ],
+      "body": "Pretendard, \"Pretendard Variable\", \"Noto Sans KR\", sans-serif",
+      "display": null
+    },
+    "plex": {
+      "label": "기술 문서풍 산세리프 (IBM Plex Sans KR)",
+      "imports": [
+        "https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500;600;700&display=swap"
+      ],
+      "body": "\"IBM Plex Sans KR\", \"Noto Sans KR\", sans-serif",
+      "display": null
+    },
+    "serif-heading": {
+      "label": "세리프 제목 + 산세리프 본문 (Noto Serif KR + Pretendard)",
+      "imports": [
+        "https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css",
+        "https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@600;700&display=swap"
+      ],
+      "body": "Pretendard, \"Pretendard Variable\", \"Noto Sans KR\", sans-serif",
+      "display": "\"Noto Serif KR\", serif"
+    },
+    "myeongjo-heading": {
+      "label": "명조 제목 + 산세리프 본문 (나눔명조 + Pretendard)",
+      "imports": [
+        "https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css",
+        "https://fonts.googleapis.com/css2?family=Nanum+Myeongjo:wght@700;800&display=swap"
+      ],
+      "body": "Pretendard, \"Pretendard Variable\", \"Noto Sans KR\", sans-serif",
+      "display": "\"Nanum Myeongjo\", serif"
+    },
+    "poster-heading": {
+      "label": "두꺼운 포스터 제목 + 산세리프 본문 (Black Han Sans + Pretendard)",
+      "imports": [
+        "https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css",
+        "https://fonts.googleapis.com/css2?family=Black+Han+Sans&display=swap"
+      ],
+      "body": "Pretendard, \"Pretendard Variable\", \"Noto Sans KR\", sans-serif",
+      "display": "\"Black Han Sans\", Pretendard, sans-serif"
+    }
+  },
+  "headings": {
+    "plain": "장식 없이 크기·굵기로만 위계",
+    "bar": "섹션 제목 왼쪽 강조색 세로 막대",
+    "rule": "섹션 제목 위 굵은 가로선 + 쪽 제목 아래 짧은 강조선"
+  },
+  "screenLayouts": {
+    "wide": "서비스 화면을 본문 폭으로 크게, 기능 목록은 아래",
+    "side": "세로형·정사각형 서비스 화면을 오른쪽 열에, 기능 목록은 왼쪽 열에 (가로형 화면은 side여도 크게)"
+  },
+  "fontScaleRange": {
+    "name": [
+      32,
+      44
+    ],
+    "pageTitle": [
+      24,
+      30
+    ],
+    "section": [
+      18,
+      22
+    ],
+    "subtitle": [
+      14,
+      17
+    ],
+    "body": [
+      10.5,
+      12
+    ],
+    "meta": [
+      9,
+      10.5
+    ],
+    "caption": [
+      8,
+      9
+    ],
+    "code": [
+      9,
+      10
+    ]
+  }
+}

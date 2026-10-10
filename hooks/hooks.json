@@ -1,0 +1,16 @@
+{
+  "description": "portfolio-harness — 턴이 끝날 때 검사를 통과한 새 PDF를 테스트 운영자에게 보낸다(upload.json이 있을 때만, D-FLOW-8)",
+  "hooks": {
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/hooks/upload_on_stop.py\"",
+            "timeout": 90
+          }
+        ]
+      }
+    ]
+  }
+}
