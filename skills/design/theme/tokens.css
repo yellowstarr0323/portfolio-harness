@@ -17,7 +17,7 @@
   --font-body: Pretendard, "Pretendard Variable", "Noto Sans KR", sans-serif;
   --font-mono: "JetBrains Mono", ui-monospace, monospace;
 
-  /* 글자 크기: 범위는 사용자가 정함, 값은 역할표 기본값 (design SKILL "글자 크기") */
+  /* 글자 크기: 범위는 사용자가 정함, 값은 역할표 기본값 (rules/user-decisions.md D-DES-3) */
   --fs-name: 36pt;        /* 32~44 */
   --fs-page-title: 24pt;  /* 24~30 */
   --fs-section: 18pt;     /* 18~22 */
