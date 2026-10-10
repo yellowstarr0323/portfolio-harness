@@ -318,7 +318,7 @@ def main(html_path: str, fmt: str, pdf_out: str) -> int:
             nproj = len(set(re.findall(r'data-role="page-title"[^>]*>\s*([^<]+?)\s*<', html)))
             if not ref and nproj and len(m["sheets"]) > 1 + PAGES_PER_PROJECT * nproj:
                 print(f"쪽 수 경고: {len(m['sheets'])}쪽 — 프로젝트 {nproj}개면 {1 + PAGES_PER_PROJECT * nproj}쪽 이하를 권장한다. "
-                      "우선순위가 낮은 세부 설명(원칙 → Priorities)부터 줄일 후보를 끝 보고에 적는다 (D-DES-17)")
+                      "우선순위가 낮은 세부 설명(원칙 → 우선순위)부터 줄일 후보를 끝 보고에 적는다 (D-DES-17)")
             if not ref and not report_fill(m["sheets"]):
                 ok = False
             if not ref:

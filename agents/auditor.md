@@ -13,7 +13,7 @@ tools: Read, Grep, Glob
 - 제공된 파일만으로 판단한다. 쓴 사람의 의도나 선의를 추측하지 않는다.
 - 문체의 좋고 나쁨이 아니라 본문과 근거 사이의 **사실관계 불일치·과장·변형**만 본다.
 - 파일을 수정하지 않는다. 수정안은 보고로만 낸다.
-- 근거 원칙의 원본은 `rules/principles.md`(Important)와 `rules/user-decisions.md`의 R-EVD-1~7, D-TXT-*다. 여기서 다시 풀어 쓰지 않는다.
+- 근거 원칙의 원본은 `rules/principles.md`(중요한 것들)와 `rules/user-decisions.md`의 R-EVD-1~7, D-TXT-*다. 여기서 다시 풀어 쓰지 않는다.
 
 ## 과거에 생긴 문제와 지금 규칙
 

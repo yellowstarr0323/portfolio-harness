@@ -15,8 +15,8 @@
 
 | ID | 날짜 | 결정 | 강제 방식 | 어디서 | 지적하지 않는 것 |
 |---|---|---|---|---|---|
-| D-SCOPE-1 | 10-09 | 대상 직무는 개발자로 한정 (원칙 → Target Users) | document-only | interview 직군 선택지 | 개발 외 직무 표현이 없음 |
-| D-SCOPE-2 | 10-09 | 지원 목표는 스타트업 고정, 묻지 않음 (원칙 → Target Hiring Market) | document-only | interview 1단계 | 대기업식 정형 이력(학점·스펙 목록)이 없음 |
+| D-SCOPE-1 | 10-09 | 대상 직무는 개발자로 한정 (원칙 → 대상 사용자) | document-only | interview 직군 선택지 | 개발 외 직무 표현이 없음 |
+| D-SCOPE-2 | 10-09 | 지원 목표는 스타트업 고정, 묻지 않음 (원칙 → 목표 채용 시장) | document-only | interview 1단계 | 대기업식 정형 이력(학점·스펙 목록)이 없음 |
 | D-FLOW-1 | 10-08 | 바꿔도 주장(누가·무엇을·얼마나)이 달라지지 않으면 AI가 정하고 묻지 않는다. 쪽 수·나누기·배치·표기·반복 제거·우선순위 낮은 내용 빼기 포함 | document-only | start "AI가 정하는 것과 묻는 것" | — |
 | D-FLOW-2 | 10-08 | 쪽 수와 페이지 구성은 묻지 않는다 | document-only | design "페이지 구성", start | — |
 | D-FLOW-3 | 10-08 | 기존 기록이 있으면 시작할 때 "이어서 / 백업하고 새로"를 한 번 묻는다 | document-only | start 0단계 | — |
@@ -86,7 +86,7 @@
 
 | ID | 날짜 | 결정 | 강제 방식 | 어디서 | 지적하지 않는 것 |
 |---|---|---|---|---|---|
-| D-TXT-1 | 10-07 | 기록에 없는 수치·사실을 쓰지 않는다. 근거없음·모름·충돌 수치는 본문에 쓰지 않는다 (원칙 → Important) | partially-enforced | check_numbers.py(수치를 단위까지 대조, 한글 수량어 포함. MISSING·UNVERIFIED 실패) — export.py가 PDF 전에 돌려 실패면 PDF를 만들지 않음(10-10). 인과·범위·역할 과장은 auditor | — |
+| D-TXT-1 | 10-07 | 기록에 없는 수치·사실을 쓰지 않는다. 근거없음·모름·충돌 수치는 본문에 쓰지 않는다 (원칙 → 중요한 것들) | partially-enforced | check_numbers.py(수치를 단위까지 대조, 한글 수량어 포함. MISSING·UNVERIFIED 실패) — export.py가 PDF 전에 돌려 실패면 PDF를 만들지 않음(10-10). 인과·범위·역할 과장은 auditor | — |
 | D-TXT-2 | 10-08 | 출처 메모·하네스 용어("원문", "블로그 기준", "facts" 등)를 본문에 쓰지 않는다 | script-enforced | check_numbers.py INTERNAL | — |
 | D-TXT-3 | 10-07 | 회고·자기소개 원문은 맞춤법·띄어쓰기만 고친다. 그 이상은 사용자에게 묻는다 | partially-enforced | pair_blocks.py RETRO diff → auditor | — |
 | D-TXT-4 | 10-09 | 자료끼리 다른 값(충돌)이 남아 있으면 build하지 않는다 | script-enforced | facts_lint ERROR, export.py 사전 검증 | — |
@@ -104,7 +104,7 @@
 
 ## 8. 기본 검증 규칙 (시스템 기본값 — 사용자 결정 아님)
 
-사용자가 정한 것이 아니라 "지어내지 않는다"(원칙 → Important)를 지키려고 하네스가 처음부터 둔 근거 규칙이다. 목록만 모았고, 자세한 기준은 "원문 위치"가 원본이다. 사용자가 바꾸자고 하면 `D-` 결정으로 옮긴다.
+사용자가 정한 것이 아니라 "지어내지 않는다"(원칙 → 중요한 것들)를 지키려고 하네스가 처음부터 둔 근거 규칙이다. 목록만 모았고, 자세한 기준은 "원문 위치"가 원본이다. 사용자가 바꾸자고 하면 `D-` 결정으로 옮긴다.
 
 | ID | 규칙 | 강제 방식 | 원문 위치 |
 |---|---|---|---|

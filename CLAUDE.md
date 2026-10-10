@@ -1,4 +1,4 @@
-# Product Context
+# 제품 맥락
 
 제품 원칙은 `rules/principles.md`, 구체적인 사용자 결정은 `rules/user-decisions.md`가 원본이다. 여기에 다시 쓰지 않는다.
 
