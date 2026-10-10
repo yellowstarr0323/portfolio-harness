@@ -4,7 +4,7 @@
 모델이 끝 보고 전에 upload.py를 부르는 것을 잊거나, 스킬 흐름 밖에서 PDF를 다시 만들어도(2026-10-10 pf-new에서
 실제로 그랬다) 전송이 빠지지 않게 하는 장치다.
 - 범위: 하네스로 포트폴리오를 만드는 세션에서만 돈다 — 작업 폴더에 portfolio/interview-state.md가 있고, 이 세션 기록
-  (transcript_path)에서 export.py를 실행한 적이 있어야 한다. 플러그인이 켜진 다른 작업 세션에서는 보내지 않는다
+  (transcript_path)에 export.py를 실행한 Bash 도구 호출이 있어야 한다(글자만 있는 줄은 세지 않음). 플러그인이 켜진 다른 작업 세션에서는 보내지 않는다
 - 보내는 조건: 플러그인 루트에 upload.json이 있음 + 작업 폴더에 portfolio/out/portfolio.pdf가 있음 +
   export.py가 남긴 out/.export.json이 같은 PDF(sha256)를 "ok"로 기록함. 같은 PDF는 upload.py가 한 번만 보낸다
 - **최종본만 보낸다**(D-FLOW-8, 10-10): 감사(audit)가 끝난 HTML로 만든 PDF여야 한다 — out/.build.json에 "audit"이 있고
@@ -25,14 +25,39 @@ UPLOAD = ROOT / "skills" / "build" / "scripts" / "upload.py"
 
 
 def ran_export(transcript: str | None) -> bool:
-    """이 세션 기록에 export.py 실행이 있는지. 기록을 읽지 못하면 보내지 않는다."""
+    """이 세션에서 export.py를 실제로 실행했는지. 기록을 읽지 못하면 보내지 않는다.
+
+    세션 기록(JSONL)에서 assistant 메시지의 Bash tool_use 중 input.command에 export.py가 있을 때만 참이다.
+    줄 어딘가에 "export.py" 글자만 있는 경우(스킬 본문·사용자 말·도구 결과)는 세지 않는다. 깨진 줄은 건너뛴다.
+    """
     if not transcript:
         return False
     try:
         with open(transcript, "rb") as f:
-            return any(b"export.py" in line for line in f)
+            for raw in f:
+                if b"export.py" not in raw:
+                    continue                                # 빠른 거르기
+                try:
+                    entry = json.loads(raw)
+                except ValueError:
+                    continue
+                if not isinstance(entry, dict) or entry.get("type") != "assistant":
+                    continue
+                msg = entry.get("message")
+                if not isinstance(msg, dict):
+                    continue
+                content = msg.get("content")
+                if not isinstance(content, list):
+                    continue
+                for item in content:
+                    if not isinstance(item, dict) or item.get("type") != "tool_use" or item.get("name") != "Bash":
+                        continue
+                    inp = item.get("input")
+                    if isinstance(inp, dict) and "export.py" in str(inp.get("command", "")):
+                        return True
     except OSError:
         return False
+    return False
 
 
 def audited(out: Path) -> bool:

@@ -925,9 +925,27 @@ def upload_tests(tmp: Path) -> None:
         (hout / ".export.json").write_text(json.dumps({"pdf": "portfolio.pdf", "ok": ok,
                                                        "sha256": hashlib.sha256(data or hpdf.read_bytes()).hexdigest()}), encoding="utf-8")
     transcript = tmp / "session.jsonl"
-    transcript.write_text('{"type":"assistant","message":{"content":"python3 export.py portfolio/out/index.html a4"}}\n', encoding="utf-8")
+    bash_call = {"type": "assistant", "message": {"role": "assistant", "content": [
+        {"type": "tool_use", "id": "t1", "name": "Bash",
+         "input": {"command": "python3 skills/build/scripts/export.py portfolio/out/index.html a4", "description": "PDF"}}]}}
+    transcript.write_text("깨진 줄 export.py {\n" + json.dumps(bash_call, ensure_ascii=False) + "\n", encoding="utf-8")
     other_tr = tmp / "other-session.jsonl"
     other_tr.write_text('{"type":"user","message":{"content":"다른 작업"}}\n', encoding="utf-8")
+    # ran_export: 실제 Bash 도구 호출만 센다(스킬 본문처럼 글자만 있는 줄은 아님)
+    import importlib.util
+    spec = importlib.util.spec_from_file_location("upload_on_stop", hook)
+    hmod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(hmod)
+    text_tr = tmp / "text-only.jsonl"
+    text_tr.write_text("\n".join(json.dumps(e, ensure_ascii=False) for e in (
+        {"type": "user", "message": {"role": "user", "content": "스킬 본문: python3 scripts/export.py <html> a4 로 PDF를 만든다"}},
+        {"type": "assistant", "message": {"role": "assistant", "content": [{"type": "text", "text": "이제 export.py를 돌린다"}]}},
+        {"type": "assistant", "message": {"role": "assistant", "content": [
+            {"type": "tool_use", "id": "t2", "name": "Read", "input": {"file_path": "skills/build/scripts/export.py"}}]}},
+        {"type": "assistant", "message": {"role": "assistant", "content": "python3 export.py portfolio/out/index.html a4"}},
+    )) + "\n", encoding="utf-8")
+    results.append(("hook ran_export 스킬 본문·텍스트·다른 도구에만 export.py → 거짓", hmod.ran_export(str(text_tr)) is False, ""))
+    results.append(("hook ran_export Bash tool_use command에 export.py → 참 (깨진 줄은 건너뜀)", hmod.ran_export(str(transcript)) is True, ""))
     ev = json.dumps({"hook_event_name": "Stop", "cwd": str(hcwd), "transcript_path": str(transcript)})
     n0 = len(got)
     code = fire(ev)
@@ -940,6 +958,8 @@ def upload_tests(tmp: Path) -> None:
     (hcwd / "portfolio" / "interview-state.md").write_text("stage: done\n", encoding="utf-8")
     code = fire(json.dumps({"hook_event_name": "Stop", "cwd": str(hcwd), "transcript_path": str(other_tr)}))
     results.append(("hook 이 세션에서 export.py를 안 돌렸으면 안 보냄 (범위)", code == 0 and len(got) == n0, f"보낸 수 {len(got) - n0}"))
+    code = fire(json.dumps({"hook_event_name": "Stop", "cwd": str(hcwd), "transcript_path": str(text_tr)}))
+    results.append(("hook 기록에 export.py 글자만 있고 Bash 실행이 없으면 안 보냄 (범위)", code == 0 and len(got) == n0, f"보낸 수 {len(got) - n0}"))
     code = fire(json.dumps({"hook_event_name": "Stop", "cwd": str(hcwd)}))
     results.append(("hook 세션 기록 경로가 없으면 안 보냄 (범위)", code == 0 and len(got) == n0, f"보낸 수 {len(got) - n0}"))
     hpdf.write_bytes(b"%PDF-1.4 hook draft")
@@ -1023,12 +1043,33 @@ def docs_tests() -> None:
     skills = sorted((ROOT / "skills").glob("*/SKILL.md"))
     missing = [str(s.relative_to(ROOT)) for s in skills if "**먼저 읽는다**" not in s.read_text(encoding="utf-8")]
     results.append(("docs 모든 스킬에 '먼저 읽는다'", not missing, "ok" if not missing else f"없음: {missing}"))
-    ids = _re.findall(r"^\| ((?:D|U|R|C|E)-[A-Z0-9-]*\d+) \|", (rules / "user-decisions.md").read_text(encoding="utf-8"), _re.M)
+    # 결정(D·R)과 사용자 결정 기록(U)은 user-decisions.md, 이력(C·E)은 history.md — 번호는 두 파일을 함께 본다
+    ud_text = (rules / "user-decisions.md").read_text(encoding="utf-8")
+    hist_text = (rules / "history.md").read_text(encoding="utf-8") if (rules / "history.md").exists() else ""
+    row = r"^\| ((?:D|U|R|C|E)-[A-Z0-9-]*\d+) \|"
+    ud_ids = _re.findall(row, ud_text, _re.M)
+    hist_ids = _re.findall(row, hist_text, _re.M)
+    ids = ud_ids + hist_ids
     dup = sorted({i for i in ids if ids.count(i) > 1})
-    results.append(("docs 결정 번호 중복 없음 (동시 세션 충돌)", not dup, "ok" if not dup else f"중복: {dup} — scripts/next_id.py로 다시 붙인다"))
+    results.append(("docs 결정 번호 중복 없음 (동시 세션 충돌, history.md 포함)", not dup, "ok" if not dup else f"중복: {dup} — scripts/next_id.py로 다시 붙인다"))
     c, o = run([str(ROOT / "scripts" / "next_id.py"), "D-DES"])
     top = max(int(i.rsplit("-", 1)[1]) for i in ids if i.startswith("D-DES-"))
     results.append(("next_id 다음 결정 번호", o.strip() == f"D-DES-{top + 1}", o.strip()))
+    c, o = run([str(ROOT / "scripts" / "next_id.py"), "E"])
+    top = max((int(i.rsplit("-", 1)[1]) for i in ids if _re.fullmatch(r"E-\d+", i)), default=0)
+    results.append(("next_id 이력 번호는 history.md를 본다", o.strip() == f"E-{top + 1}" and top > 0, o.strip()))
+    misplaced = [i for i in ud_ids if _re.fullmatch(r"[CE]-\d+", i)] + [i for i in hist_ids if not _re.fullmatch(r"[CE]-\d+", i)]
+    results.append(("docs 이력(C·E)은 history.md, 결정·U는 user-decisions.md에만", not misplaced, "ok" if not misplaced else f"자리가 틀림: {misplaced}"))
+    hist_refs = set()
+    ref_files = [p for d in ("skills", "agents", "hooks", "scripts") for p in (ROOT / d).rglob("*")
+                 if p.is_file() and p.suffix in (".md", ".py", ".js", ".json", ".css", ".sh") and p.name != "next_id.py"]  # next_id 사용법의 예시 번호는 뺀다
+    ref_files += [rules / "user-decisions.md", rules / "history.md"]
+    for f in ref_files:
+        if f.exists():
+            hist_refs |= set(_re.findall(r"(?<![A-Za-z0-9-])([CEU]-\d+)\b", f.read_text(encoding="utf-8")))
+    known = set(ud_ids) | set(hist_ids)
+    unknown = sorted(hist_refs - known)
+    results.append(("docs 문서·스크립트가 참조하는 U·C·E 번호가 원본에 있음", not unknown, "ok" if not unknown else f"없는 번호: {unknown}"))
     docs = skills + sorted((ROOT / "agents").glob("*.md"))
     no_ko = [str(d.relative_to(ROOT)) for d in docs if not any(k in d.read_text(encoding="utf-8") for k in ("**한국어로 말한다**", "**보고는 한국어로 쓴다.**"))]
     results.append(("docs 모든 스킬·에이전트에 한국어 보고 규칙", not no_ko, "ok" if not no_ko else f"없음: {no_ko}"))
@@ -1039,7 +1080,7 @@ def docs_tests() -> None:
     results.append(("docs 기본 검증 규칙(R-EVD-1~7)이 결정 원본에 있음", not evd, "ok" if not evd else f"없음: {evd}"))
     bad = []
     for s in skills:
-        for rel in ("../../rules/principles.md", "../../rules/user-decisions.md"):
+        for rel in ("../../rules/principles.md", "../../rules/user-decisions.md", "../../rules/history.md"):
             if rel in s.read_text(encoding="utf-8") and not (s.parent / rel).resolve().exists():
                 bad.append(f"{s.parent.name}: {rel}")
     results.append(("docs 스킬 기준 상대 경로가 실제 파일을 가리킴", not bad, "ok" if not bad else str(bad)))
@@ -1048,10 +1089,11 @@ def docs_tests() -> None:
     claude = (ROOT / "CLAUDE.md").read_text(encoding="utf-8")
     dup = "## Target Hiring Market" in claude or "@rules/principles.md" not in claude
     results.append(("docs CLAUDE.md는 원칙을 @import만 하고 다시 쓰지 않음", not dup, "ok" if not dup else "CLAUDE.md에 원칙 본문이 있거나 @import가 없다"))
-    ids = set(_re.findall(r"\b(D-[A-Z0-9]+-\d+)\b", (rules / "user-decisions.md").read_text(encoding="utf-8")))
+    ids = set(_re.findall(r"^\| (D-[A-Z0-9]+-\d+) \|", ud_text, _re.M))
     used = set()
-    for f in list(skills) + sorted((ROOT / "agents").glob("*.md")):
-        used |= set(_re.findall(r"\b(D-[A-Z0-9]+-\d+)\b", f.read_text(encoding="utf-8")))
+    for f in list(skills) + sorted((ROOT / "agents").glob("*.md")) + ref_files:
+        if f.exists():
+            used |= set(_re.findall(r"\b(D-[A-Z0-9]+-\d+)\b", f.read_text(encoding="utf-8")))
     unknown = sorted(used - ids)
     results.append(("docs 스킬이 참조하는 결정 ID가 원본에 있음", not unknown, "ok" if not unknown else f"원본에 없는 ID: {unknown}"))
 

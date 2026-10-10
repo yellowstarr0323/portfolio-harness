@@ -18,7 +18,7 @@
   "designSource": {
     "tool": "ui-ux-pro-max@2.13.0",
     "style": "Minimalism & Swiss Style (레퍼런스가 없을 때의 바탕)",
-    "note": "2026-10-10 사용자 결정(D-DES-15): 레퍼런스를 묻고 있으면 배치·색·글꼴까지 그대로 따른다(D-DES-16, 디자인 검사 없음). 없으면 첫 PDF는 minimal 기본값으로 만들고, 첫 PDF 뒤 사용자가 실제 쪽 시안(make_previews.py)을 보고 전체 스타일·강조색·글꼴·서비스 화면 배치를 고른다. 값은 make_theme.py가 tokens.css·style.css로 만든다. 실행 중에는 ui-ux-pro-max를 부르지 않는다"
+    "note": "2026-10-10 사용자 결정(D-DES-15): 레퍼런스를 묻고 있으면 배치·색·글꼴까지 그대로 따른다(D-DES-16, 디자인 검사 없음). 없으면 첫 PDF는 minimal 스타일에 로고 색·자동 추천 글꼴(make_theme.py --auto)로 만들고, 첫 PDF 뒤 사용자가 실제 쪽 시안(make_previews.py)을 보고 전체 스타일·강조색·글꼴·서비스 화면 배치를 고른다. 값은 make_theme.py가 tokens.css·style.css로 만든다. 실행 중에는 ui-ux-pro-max를 부르지 않는다"
   },
   "sections": [
     "profile-page",
