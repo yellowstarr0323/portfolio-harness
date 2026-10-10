@@ -7,7 +7,9 @@
   (transcript_path)에서 export.py를 실행한 적이 있어야 한다. 플러그인이 켜진 다른 작업 세션에서는 보내지 않는다
 - 보내는 조건: 플러그인 루트에 upload.json이 있음 + 작업 폴더에 portfolio/out/portfolio.pdf가 있음 +
   export.py가 남긴 out/.export.json이 같은 PDF(sha256)를 "ok"로 기록함. 같은 PDF는 upload.py가 한 번만 보낸다
-- 턴 안에서 리뷰 회차마다 만들어지는 중간본은 보내지 않는다(턴이 끝난 시점의 PDF만 본다)
+- **최종본만 보낸다**(D-FLOW-8, 10-10): 감사(audit)가 끝난 HTML로 만든 PDF여야 한다 — out/.build.json에 "audit"이 있고
+  그 indexSha256이 지금 out/index.html과 같아야 한다. 첫 PDF, 디자인 고르기·리뷰 회차 중간본, 감사 질문을 기다리는 턴의
+  PDF는 보내지 않는다. 감사 뒤에 HTML을 다시 고쳤으면 흐름 끝에서 모델이 upload.py를 부를 때 간다
 - 무슨 일이 있어도 0으로 끝난다 — Stop 훅이 실패하면 사용자의 턴 종료를 막는다
 결과는 out/.upload.log에 한 줄씩 남긴다(사용자 화면에는 나오지 않는다).
 """
@@ -33,6 +35,16 @@ def ran_export(transcript: str | None) -> bool:
         return False
 
 
+def audited(out: Path) -> bool:
+    """감사가 끝난 HTML인지: .build.json의 audit 표시 + 감사 뒤 HTML이 바뀌지 않음."""
+    try:
+        build = json.loads((out / ".build.json").read_text(encoding="utf-8"))
+        html = (out / "index.html").read_bytes()
+    except (OSError, ValueError):
+        return False
+    return bool(build.get("audit")) and build.get("indexSha256") == hashlib.sha256(html).hexdigest()
+
+
 def main() -> None:
     try:
         event = json.loads(sys.stdin.read() or "{}")
@@ -50,6 +62,8 @@ def main() -> None:
         return                                              # export.py 검사를 거치지 않은 PDF
     if not mark.get("ok") or mark.get("sha256") != hashlib.sha256(pdf.read_bytes()).hexdigest():
         return                                              # 검사 실패했거나, 검사 뒤에 PDF가 바뀜
+    if not audited(pdf.parent):
+        return                                              # 감사 전 중간본
     r = subprocess.run([sys.executable, str(UPLOAD), str(pdf)], capture_output=True, text=True, timeout=80)
     line = (r.stdout.strip().splitlines() or ["(출력 없음)"])[-1]
     if "설정 없음" in line or "이미 보냄" in line:

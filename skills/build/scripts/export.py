@@ -33,6 +33,10 @@
      아니면 실패. 쪽이 2장 이상인데 page-title이 하나도 없어도 실패 — 이름 다음에 한 일이 먼저 나오면 독자는 무슨 서비스인지 모른다
    - 프로젝트 이미지(실패): 프로젝트마다 로고(img[data-kind=logo], 첫머리 안)와 서비스 화면(img[data-kind=screen], 같은
      data-project) 1장 이상. 사용자가 없다고 확인한 것은 첫머리의 data-image-missing="logo screen"으로 표시하면 통과
+   - 1쪽 직무명(실패, D-P1-5): data-layout="profile" 쪽에 data-role="job-title"이 없거나 비면 실패. 레퍼런스 모드에서도 본다
+   - 글자 대비(D-DES-1): 글자색과 실제 바탕색(조상의 background-color)의 대비가 1.5:1 미만이면 안 보이는 글자로 실패(레퍼런스 모드 포함),
+     4.5:1(큰 글자 3:1) 미만이면 경고. 바탕이 배경 이미지·그라디언트면 건너뛴다
+   - 쪽 수(경고, D-DES-17): 1 + 3 × 프로젝트 수(page-title 개수)를 넘으면 경고
    - 이미지: 로드 실패(naturalWidth 0)는 실패. 인쇄 폭 대비 원본 픽셀이 LOWRES_RATIO 배 미만이면 '흐릿함 경고'(SVG는 벡터라 제외) 
    - continuous: 문서 높이를 재서 @page 높이를 정한다
    - 글자 크기: 보이는 글자의 계산된 font-size가 MIN_PT 미만이면 실패 (design의 캡션 하한)
@@ -63,6 +67,8 @@ FILL_MIN = 0.50   # 마지막 쪽을 뺀 모든 쪽의 최소 채움 (여백 50%
 LOWRES_RATIO = 1.5      # 원본 폭 / 렌더 폭(CSS px, 96dpi). 1.5 미만이면 인쇄 시 약 144dpi 미만이라 흐릿하다
 MIN_PT = 8        # 캡션 하한. 이보다 작은 글자는 실패
 MERGE_PX = 24     # 이보다 좁은 틈(줄 간격, 문단 간격)은 빈 띠로 보지 않는다
+INVISIBLE_RATIO = 1.5   # 글자와 바탕 대비가 이 미만이면 안 보이는 글자로 보고 실패
+PAGES_PER_PROJECT = 3   # 쪽 수 권장 상한 = 1쪽 + 프로젝트당 이 쪽 수 (D-DES-17, 넘으면 경고만)
 
 # PDF에서 빠지는 요소를 실측에서도 뺀다. index.html의 @media print 짝과 상관없이 항상 적용한다.
 PRINT_HIDE_CSS = "<style>[data-print-hidden]{display:none !important}</style>"
@@ -246,6 +252,24 @@ def main(html_path: str, fmt: str, pdf_out: str, ref: bool = False) -> int:
             print("  프로젝트 첫머리는 이름 → 한 줄 설명(무슨 서비스) 순서이고, 로고와 서비스 화면이 있어야 한다(없다고 확인한 것만 data-image-missing)")
         elif heads["count"]:
             print(f"프로젝트 첫머리: {heads['count']}개 모두 이름 → 한 줄 설명, 로고·서비스 화면 있음")
+        # 1쪽 직무명(D-P1-5): 1쪽(data-layout="profile")이 있으면 이름 아래 직무명이 있어야 한다. 내용이라 레퍼런스 모드에서도 본다
+        # 쪽 안에 section이 겹칠 수 있어 닫는 태그 대신 다음 .sheet 시작까지를 1쪽으로 본다
+        sheet_tags = [t for t in re.finditer(r'<section\b[^>]*>', html) if re.search(r'class="[^"]*\bsheet\b', t.group())]
+        profile = next((i for i, t in enumerate(sheet_tags) if 'data-layout="profile"' in t.group()), None)
+        if profile is not None:
+            end = sheet_tags[profile + 1].start() if profile + 1 < len(sheet_tags) else len(html)
+            job = re.search(r'data-role="job-title"[^>]*>\s*([^<\s][^<]*)<', html[sheet_tags[profile].end():end])
+            if not job:
+                ok = False
+                print('1쪽 실패: 이름 아래 직무명(data-role="job-title")이 없다. 기록의 `직무명:`을 이름 바로 아래에 넣는다 (D-P1-5)')
+        # 글자 대비(D-DES-1): 1.5:1 미만은 안 보이는 글자라 실패(레퍼런스 모드 포함 — 내용이 사라진다). 4.5:1(큰 글자 3:1) 미만은 경고
+        for c_ in m.get("contrast", []):
+            where = f"sheet {c_['sheet']}" if c_["sheet"] else "쪽 밖"
+            if c_["ratio"] < INVISIBLE_RATIO:
+                ok = False
+                print(f"안 보이는 글자 실패  {where}: \"{c_['text']}\" 글자색과 바탕 대비 {c_['ratio']}:1 — 페이지 CSS가 글자색이나 바탕을 덮었는지 본다")
+            elif not ref:
+                print(f"대비 경고  {where}: \"{c_['text']}\" {c_['ratio']}:1 (기준 {'3' if c_['large'] else '4.5'}:1) — 글자색을 --color-* 토큰으로 되돌린다")
         for im in m["images"]:
             if not im["natural"]:
                 ok = False
@@ -270,6 +294,11 @@ def main(html_path: str, fmt: str, pdf_out: str, ref: bool = False) -> int:
                     print(f"넘침  sheet {s['i'] + 1}: 내용 {s['scroll']}px > 페이지 {s['client']}px")
             if ok:
                 print(f"넘침 없음 ({len(m['sheets'])}장)")
+            # 쪽 수 권장 범위(D-DES-17): 1쪽 + 프로젝트당 3쪽까지. 넘어도 막지 않고 경고만 한다
+            nproj = len(set(re.findall(r'data-role="page-title"[^>]*>\s*([^<]+?)\s*<', html)))
+            if not ref and nproj and len(m["sheets"]) > 1 + PAGES_PER_PROJECT * nproj:
+                print(f"쪽 수 경고: {len(m['sheets'])}쪽 — 프로젝트 {nproj}개면 {1 + PAGES_PER_PROJECT * nproj}쪽 이하를 권장한다. "
+                      "우선순위가 낮은 세부 설명(원칙 → Priorities)부터 줄일 후보를 끝 보고에 적는다 (D-DES-17)")
             if not ref and not report_fill(m["sheets"]):
                 ok = False
             if not ref:

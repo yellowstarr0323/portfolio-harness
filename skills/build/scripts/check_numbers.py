@@ -12,6 +12,7 @@
 - 근거없음/모름/충돌 줄에만 있는 수치 → UNVERIFIED (근거 없는 값을 본문에 씀)
 - 출처 메모·하네스 용어("원문", "블로그 기준", "facts", "근거없음" …) → INTERNAL
   facts에 붙은 출처 표기가 문장에 그대로 옮겨진 것이다. 독자에게는 의미가 없다. 측정 조건은 쓰되 출처는 쓰지 않는다
+- 말줄임("…", "...")이 기록에 같은 자리로 없음 → CUT (인용을 문장 중간에서 잘랐다, D-TXT-7)
 data-nocheck 요소(쪽 번호, 빈 이미지 슬롯 등)는 검사하지 않는다.
 종료 코드: 문제가 없으면 0, 있으면 1.
 """
@@ -31,6 +32,7 @@ UNIT_ALIAS = {"퍼센트": "%", "밀리초": "ms", "초": "s", "x": "배", "×":
 # 한글 수량어: 숫자 없이 크기를 말하는 표현. 기록에 같은 말이 있어야 쓸 수 있다
 WORD_QTY = re.compile(r"절반|반으로|(?:두|세|네|다섯|여섯|일곱|여덟|아홉|열|수십|수백|수천|몇)\s?배|"
                       r"(?:수십|수백|수천|수만)\s?(?:명|개|건|ms|초|회)")
+ELLIPSIS = re.compile(r"…|\.{3}")
 UNVERIFIED_TAG = re.compile(r"status:\s*(근거없음|모름|충돌)")
 INTERNAL = re.compile(
     r"(?i)\bfacts?\b|\[src:|status:|data-fact|근거\s?없음|역할 미확인|원문|"
@@ -97,6 +99,14 @@ def main(html_path: str, facts_dir: str) -> int:
                 continue
             ctx = line[max(0, m.start() - 30): m.end() + 30]
             problems.append(f"{'MISSING':10} {m.group():>10}  …{ctx}…  (숫자 없이 쓴 수량 — 기록에 같은 말이 없다)")
+
+        # 말줄임(D-TXT-7): 회고·자기소개 인용을 문장 중간에서 "…"로 자르지 않는다. 기록에 같은 자리의 말줄임이 있으면 원문이다
+        for m in ELLIPSIS.finditer(line):
+            before = squash(ELLIPSIS.sub("…", line[:m.start()]))[-6:]
+            if before + "…" in ELLIPSIS.sub("…", facts_text):
+                continue
+            ctx = line[max(0, m.start() - 30): m.end() + 30]
+            problems.append(f"{'CUT':10} {m.group():>10}  …{ctx}…  (인용을 말줄임으로 잘랐다 — 문장 단위로 쓰거나 뺀다)")
 
         for m in INTERNAL.finditer(line):
             ctx = line[max(0, m.start() - 30): m.end() + 30]

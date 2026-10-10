@@ -6,6 +6,8 @@ description: 포트폴리오 서술 감사. 완성된 out/index.html의 문장�
 # 서술 감사 (audit)
 
 > **먼저 읽는다** — 이 스킬을 불러오면 표시되는 기본 디렉터리(`Base directory for this skill`) 기준으로 `../../rules/principles.md`(제품 원칙)와 `../../rules/user-decisions.md`(사용자 결정 원본)를 읽는다. 이 문서의 규칙이 그 둘과 다르면 그 둘이 맞다. 같은 세션에서 이미 읽었으면 다시 읽지 않는다. **둘 중 하나라도 읽지 못하면(파일 없음·읽기 실패) 이 스킬의 작업을 시작하지 않는다** — 어떤 파일을 어느 경로로 찾았는지와 "원칙 문서를 읽지 못해 멈췄다"를 첫 줄에 알리고 끝낸다. 원칙 없이 기억이나 이 문서만으로 대신 진행하지 않는다.
+>
+> **한국어로 말한다** — 사용자에게 하는 모든 말(질문·선택지·중간 안내·끝 보고)은 한국어로 쓴다(원칙 → Target Users). 스크립트 출력·에이전트 보고·영어 자료를 옮길 때도 한국어로 풀어 쓴다. 기술 이름·코드·파일 경로·고유명사만 원래 표기. 사용자가 다른 언어를 요청했을 때만 바꾼다. 격리 실행(개인 설정 없음)에서 끝 보고가 영어로 나온 적이 있다(10-10).
 
 > 사용자에게 말할 때는 `start` 스킬의 "사용자에게 쓰는 말" 표를 따른다. facts·outline·슬롯 같은 내부 이름을 채팅에 그대로 쓰지 않는다.
 
@@ -76,8 +78,8 @@ sources: <절대경로>/portfolio/sources/   (심층 모드일 때만)
    python3 <B>/check_numbers.py portfolio/out/index.html portfolio/facts
    python3 <B>/export.py portfolio/out/index.html <design.json의 format> portfolio/out/portfolio.pdf
    ```
-3. 통과하면 `out/.build.json`의 `indexSha256`를 새 해시로 갱신하고 `"audit": "<report 파일명>"`을 추가한다. 그래야 다음 build가 감사로 고친 내용을 사용자의 수동 편집으로 오인하지 않는다.
-4. PDF를 다시 만들었으면 보고 전에 `python3 <B>/upload.py portfolio/out/portfolio.pdf`를 돌리고 출력 한 줄을 보고 끝에 옮긴다(build "PDF 전송", D-FLOW-8). 설정이 없거나 같은 PDF면 알아서 건너뛴다.
+3. 통과하면 `out/.build.json`의 `indexSha256`를 새 해시로 갱신하고 `"audit": "<report 파일명>"`을 추가한다. **고친 문장이 없어도 감사를 끝냈으면 `audit`을 적는다** — 턴 끝 전송 훅이 이 표시로 최종본을 알아본다(D-FLOW-8). 그래야 다음 build가 감사로 고친 내용을 사용자의 수동 편집으로 오인하지 않는다.
+4. audit를 단독으로 불렀으면 보고 전에 `python3 <B>/upload.py portfolio/out/portfolio.pdf`를 돌리고 출력 한 줄을 보고 끝에 옮긴다(build "PDF 전송", D-FLOW-8). `start` 흐름 안이면 돌리지 않는다 — 감사 뒤 build 검증·리뷰를 다시 돌 수 있어 start가 끝에서 한 번 보낸다. 설정이 없거나 같은 PDF면 알아서 건너뛴다.
 5. 감사로 고친 문장의 이유는 **report에 남는다.** 다음 build가 같은 문장을 다시 원래대로 쓰지 않게, 수정 사항 중 facts로 옮길 수 있는 것(예: 인과를 명시하지 않는다는 사실, 측정 조건)은 facts에 반영한다. 이유가 문서에 남지 않으면 며칠 뒤 같은 표현이 되돌아온다.
 
 ## 하지 않는 것

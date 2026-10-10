@@ -284,13 +284,53 @@ function images() {
     src: im.getAttribute('src'), natural: im.naturalWidth, vector: isVector(im),
     rendered: Math.round(im.getBoundingClientRect().width) }));
 }
+function contrastIssues() {
+  // 글자색과 실제 바탕색의 대비(D-DES-1, 4.5:1). 테마는 make_theme.py가 재지만, 페이지 CSS가 띠 위 글자색이나 바탕을 덮으면
+  // 글자색 = 바탕색(안 보이는 글자)이 될 수 있다(5차: 띠 위 라벨이 회색으로 남음). 바탕은 조상 중 처음 나오는 불투명 background-color.
+  // 그 사이에 배경 이미지(그라디언트 포함)가 있으면 바탕을 알 수 없어 건너뛴다
+  const rgba = c => { const m = c.match(/rgba?\(([^)]+)\)/); if (!m) return null;
+    const v = m[1].split(/[\s,\/]+/).filter(Boolean).map(parseFloat); return [v[0], v[1], v[2], v.length > 3 ? v[3] : 1]; };
+  const over = (fg, bg) => [0, 1, 2].map(i => fg[i] * fg[3] + bg[i] * (1 - fg[3]));
+  const lum = c => { const [r, g, b] = c.map(x => { x /= 255; return x <= 0.03928 ? x / 12.92 : Math.pow((x + 0.055) / 1.055, 2.4); });
+    return 0.2126 * r + 0.7152 * g + 0.0722 * b; };
+  const bgOf = el => {
+    const layers = [];
+    for (let e = el; e; e = e.parentElement) {
+      const cs = getComputedStyle(e);
+      if (cs.backgroundImage && cs.backgroundImage !== 'none') return null;
+      const c = rgba(cs.backgroundColor);
+      if (c && c[3] > 0) { layers.push(c); if (c[3] >= 1) break; }
+    }
+    let bg = [255, 255, 255];
+    for (const c of layers.reverse()) bg = over(c, bg);
+    return bg;
+  };
+  const out = [], seen = new Set();
+  const tw = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+  while (tw.nextNode()) {
+    const n = tw.currentNode, el = n.parentElement;
+    if (!n.data.trim() || !el || seen.has(el) || el instanceof SVGElement || el.closest('#__measure')) continue;
+    seen.add(el);
+    const rg = document.createRange(); rg.selectNodeContents(n);
+    if (!rg.getClientRects().length) continue;
+    const cs = getComputedStyle(el), fg = rgba(cs.color), bg = bgOf(el);
+    if (!fg || !bg) continue;
+    const a = lum(over(fg, bg)), b = lum(bg);
+    const ratio = (Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05);
+    const pt = parseFloat(cs.fontSize) * 0.75, large = pt >= 18 || (pt >= 14 && parseInt(cs.fontWeight) >= 700);
+    const sheet = el.closest('.sheet');
+    if (ratio < (large ? 3 : 4.5)) out.push({ ratio: Math.round(ratio * 100) / 100, large,
+      sheet: sheet ? [...document.querySelectorAll('.sheet')].indexOf(sheet) + 1 : 0, text: n.data.trim().replace(/\s+/g, ' ').slice(0, 30) });
+  }
+  return out;
+}
 window.addEventListener('load', () => document.fonts.ready.then(() => {
   const sheets = [...document.querySelectorAll('.sheet')].map((s, i) => ({
     i, scroll: s.scrollHeight, client: s.clientHeight, fill: fill(s), type: typeScale(s), roles: roles(s, i).concat(beforeAfter(s, i)), top: topTexts(s) }));
   const d = document.documentElement;
   const pre = document.createElement('pre');
   pre.id = '__measure';
-  pre.textContent = JSON.stringify({ sheets, small: smallText(), images: images(), heads: projectHeads(), pairs: measurePairs(), width: d.scrollWidth, height: d.scrollHeight,
+  pre.textContent = JSON.stringify({ sheets, small: smallText(), images: images(), contrast: contrastIssues(), heads: projectHeads(), pairs: measurePairs(), width: d.scrollWidth, height: d.scrollHeight,
     fonts: [...document.fonts].filter(f => f.status === 'loaded').map(f => f.family) });
   document.body.appendChild(pre);
 }));

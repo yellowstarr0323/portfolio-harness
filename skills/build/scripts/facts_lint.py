@@ -15,7 +15,8 @@
 ERROR가 하나라도 있으면 HTML 생성과 PDF export를 진행하지 않는다.
 
 검사 (실제 기록 형식: interview 스킬 "사실 파일 형식" 기준)
-- profile.md: 파일 존재, frontmatter `kind: profile`, `## 기본 정보`의 이름,
+- profile.md: 파일 존재, frontmatter `kind: profile`, `## 기본 정보`의 이름, `## 직군·경력`의 직무명(D-P1-5),
+  `## 연락처`에 값 없는 줄·자리표시 연락처(010-1111-1111, example.com 등) 없음(D-P1-6),
   `## 수상·자격증`·`## 활동`이 있고 항목마다 날짜(YYYY.MM 이상)가 있음 — 없다고 확인했으면 "- 활동 없음" 한 줄(D-P1-4)
 - 프로젝트 파일(profile.md·백업 제외)
   - frontmatter `project`, `slug`
@@ -48,6 +49,8 @@ YM_LOOSE = re.compile(r"^(\d{4})\s*[-/.년]\s*(\d{1,2})\s*월?(?:[-/.]\s*\d{1,2}
 H2 = re.compile(r"^##\s+(.*)$")
 PROFILE_DATE = re.compile(r"\b\d{4}\.\d{1,2}(\.\d{1,2})?\b")   # 수상·자격증·활동 날짜(YYYY.MM 이상)
 H3 = re.compile(r"^###\s+(.*)$")
+# 자리표시 연락처: 같은 숫자 4개 반복(010-1111-1111), 0000·1234-5678, example 도메인, xxx·test@·your@
+PLACEHOLDER_CONTACT = re.compile(r"(\d)\1{3}|1234-?5678|example\.(com|org|net)|x{3,}|\btest@|\byour(name)?@|비우면 생략", re.I)
 
 
 class Issues:
@@ -135,6 +138,27 @@ def lint_profile(path: Path, iss: Issues) -> None:
     info = " ".join(secs.get("기본 정보", []))
     if not re.search(r"이름\s*[:：]\s*\S", info):
         iss.ask(path.name, "기본 정보.이름", "이름이 없다", "이름을 묻는다")
+    # 1쪽 이름 아래 직무명은 필수다(D-P1-5). 직군이 하나로 정해지면 직무명을 바로 만들 수 있다
+    career = " ".join(secs.get("직군·경력", []) + secs.get("기본 정보", []))   # 옛 기록은 직군을 기본 정보에 적었다
+    if not re.search(r"직무명\s*[:：]\s*\S", career):
+        job = re.search(r"직군\s*[:：]\s*(백엔드|프론트엔드|모바일)", career)
+        if job:
+            iss.fix(path.name, "직군·경력.직무명", "직무명이 없다 — 1쪽 이름 아래에 들어간다",
+                    f"`## 직군·경력`에 `- 직무명: {job.group(1)} 개발자 [src: interview]`를 넣는다")
+        else:
+            iss.ask(path.name, "직군·경력.직무명", "직무명이 없다 — 1쪽 이름 아래에 들어간다",
+                    "1쪽 이름 아래에 쓸 직무명을 묻는다(예: 풀스택 개발자, 인프라 엔지니어)")
+    # 자리표시 연락처(010-1111-1111, example.com, 값 없는 줄)는 그대로 PDF에 나간다(D-P1-6)
+    for b in bullets(secs.get("연락처", [])):
+        plain = re.sub(r"`[^`]*`", "", b).strip()
+        key, _, value = plain.partition(":")
+        value = value.strip()
+        if not value:
+            iss.fix(path.name, f"연락처.{key.strip()}", f"값이 없는 연락처 줄 — `{plain}`",
+                    "비운 연락처는 생략이므로 그 줄을 지운다")
+        elif PLACEHOLDER_CONTACT.search(value):
+            iss.ask(path.name, f"연락처.{key.strip()}", f"자리표시로 보이는 연락처 — `{value}`",
+                    "실제 연락처를 묻는다. 넣지 않겠다고 하면 그 줄을 지운다")
     # 수상·자격증과 활동은 날짜가 필수다(사용자 결정 D-P1-4). 없다고 확인한 경우만 "~ 없음" 한 줄로 통과
     for sec, none_word, what in (("수상·자격증", "수상·자격증 없음", "수상·자격증"), ("활동", "활동 없음", "활동")):
         if sec not in secs:

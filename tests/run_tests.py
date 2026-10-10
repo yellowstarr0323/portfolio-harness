@@ -129,7 +129,8 @@ SHAPES_HTML = (
 def portfolio_html(*, period_below=False, retro_first=False, pair_split=False, sparse_first=False,
                    running_header=False, arrow_top=False, small_font=False, plain_ba=False,
                    hidden_tall=False, intro_arrow=False, lowres=False, diagram_pair="",
-                   no_layout=False, shapes=False, links="", link_base="", ruled_wrapper=False) -> str:
+                   no_layout=False, shapes=False, links="", link_base="", ruled_wrapper=False,
+                   job_title=None, extra_sheets=0, contrast="") -> str:
     period = '<span class="period" data-role="project-meta">2026.03 ~ 운영 중</span>'
     if period_below:
         head_row = '<div class="head-row"><img data-kind="logo" src="assets/logo.svg" alt=""><h1 data-role="page-title">DMS</h1></div>' \
@@ -149,8 +150,9 @@ def portfolio_html(*, period_below=False, retro_first=False, pair_split=False, s
               + (f'<div class="measure-pair" data-role="measure-pair">{measure("after")}</div>' if pair_split else '')
               + filler(3) + '</section>')
     retro = '<section data-role="project-retro"><h2 data-role="section-title">전체 회고</h2><p>측정 조건을 먼저 정해야 한다는 걸 배웠다.</p></section>'
-    layout = ' data-layout="profile"' if intro_arrow else ''
+    layout = ' data-layout="profile"' if intro_arrow or job_title is not None else ''
     sheet1 = (f'<section class="sheet"{layout}>{top}'
+              + (f'<h1 data-role="name">홍길동</h1><p data-role="job-title">{job_title}</p>' if job_title is not None else '')
               + ('<p data-role="headline">로컬 부하 테스트에서 학생 목록 조회는 1,225ms → 241ms로 줄였습니다.</p>' if intro_arrow else '')
               + f'<header data-project="dms">{head_row}'
               '<p data-role="project-summary">학생과 교사가 쓰는 기숙사 관리 서비스</p>'
@@ -166,6 +168,9 @@ def portfolio_html(*, period_below=False, retro_first=False, pair_split=False, s
               '<p class="ba-cond" data-role="measure-cond">Gatling, 요청 10개 평균</p>'
               + ('<p>1,000ms → 100ms</p>' if plain_ba else '')
               + ('<p style="font-size:7pt">아주 작은 글자</p>' if small_font else '')
+              + ({"invisible": '<div style="background:#1e3a8a;padding:4px"><p style="color:#1e3a8a">띠 위 라벨</p></div>',
+                  "gray": '<p style="color:#bbbbbb">흐린 회색 설명</p>',
+                  "band": '<div style="background:#1e3a8a;padding:4px"><p style="color:#ffffff">띠 위 흰 글자</p></div>'}.get(contrast, ''))
               + ('<img src="assets/tiny.png" alt="" style="width:300px">' if lowres else '')
               + (f'<div class="measure-pair" data-role="measure-pair">{measure("before")}</div>' if pair_split else '')
               + '</section>'
@@ -188,7 +193,8 @@ def portfolio_html(*, period_below=False, retro_first=False, pair_split=False, s
     sheet2 = f'<section class="sheet">{top}{body2}<div class="pn" data-role="page-number">2 / 2</div></section>'
     return ('<!doctype html><html lang="ko"><head><meta charset="utf-8"><title>테스트</title>'
             '<link rel="stylesheet" href="tokens.css"><link rel="stylesheet" href="components.css"><link rel="stylesheet" href="style.css">'
-            f'<style>{PAGE_CSS}</style></head><body>{sheet1}{sheet2}{sheet3}</body></html>')
+            f'<style>{PAGE_CSS}</style></head><body>{sheet1}{sheet2}{sheet3}'
+            + "".join(f'<section class="sheet">{filler(30)}</section>' for _ in range(extra_sheets)) + '</body></html>')
 
 
 def export_tests(tmp: Path) -> None:
@@ -225,6 +231,13 @@ def export_tests(tmp: Path) -> None:
         ("export 링크: 누르면 열리는 링크 → PDF 링크·접속 확인 통과 (D-DES-14)", {"links": "good", "link_base": lbase}, 0, ("PDF 링크: 2개 모두", "접속 확인: 1/1개 열림", "통과:"), ("링크 검사: 실패",)),
         ("export 링크: 주소를 글자로만 씀 → 실패", {"links": "plain"}, 1, ("주소가 링크가 아니다", "github.com/hong-gildong"), ()),
         ("export 링크: 열리지 않는 주소(404) → 실패", {"links": "dead", "link_base": lbase}, 1, ("링크가 열리지 않는다", "404"), ()),
+        ("export 1쪽에 직무명 있음 → 통과 (D-P1-5)", {"job_title": "백엔드 개발자"}, 0, ("통과:",), ("직무명",)),
+        ("export 1쪽에 직무명 없음 → 실패", {"job_title": ""}, 1, ("1쪽 실패", "job-title"), ()),
+        ("export 쪽 수 권장 범위 초과 → 경고만 (D-DES-17)", {"extra_sheets": 3}, None, ("쪽 수 경고: 5쪽", "4쪽 이하"), ()),
+        ("export 쪽 수 권장 범위 안 → 경고 없음", {}, 0, (), ("쪽 수 경고",)),
+        ("export 글자색 = 바탕색(띠 위 안 보이는 글자) → 실패", {"contrast": "invisible"}, 1, ("안 보이는 글자 실패", "띠 위 라벨"), ()),
+        ("export 흐린 회색 글자(4.5:1 미만) → 경고만", {"contrast": "gray"}, 0, ("대비 경고", "흐린 회색 설명"), ("안 보이는 글자",)),
+        ("export 진한 띠 위 흰 글자 → 대비 통과", {"contrast": "band"}, 0, ("통과:",), ("대비 경고", "안 보이는 글자")),
         ("export 세부 설명에 이야기 모양 키 없음 → 사전 검증 실패", {"no_layout": True}, 1, ("data-layout이 없다", "사전 검증 실패"), ("넘침 없음",)),
         ("export 이야기 모양 부품(타임라인·흐름·단계·결정) 렌더·텍스트 대조 통과", {"shapes": True}, 0, ("레이아웃 검사: 통과", "텍스트 대조: 일치", "통과:"), ("작은 글자", "넘침  sheet")),
     ]
@@ -290,8 +303,16 @@ def export_tests(tmp: Path) -> None:
 PROFILE = """---
 kind: profile
 ---
+## 직군·경력
+- 직군: 백엔드 `[src: interview]`
+- 직무명: 백엔드 개발자 `[src: interview]`
+
 ## 기본 정보
 - 이름: 홍길동 `[src: interview]`
+
+## 연락처
+- 이메일: hong.gildong@gmail.com `[src: interview]`
+- GitHub: https://github.com/hong-gildong `[src: interview]`
 
 ## 활동
 - 교내 해커톤 운영진 | 교내 | 2025.03 ~ 2025.06 | 접수 페이지 개발 `[src: interview]`
@@ -369,6 +390,12 @@ def facts_tests(tmp: Path) -> None:
         ("facts_lint 수상에 날짜 없음 → ERROR[확인]", PROJECT, PROFILE.replace("정보처리기능사 | 2025.09.30 |", "정보처리기능사 |"), 1, ("수상·자격증.정보처리기능사", "날짜가 없다"), ()),
         ("facts_lint 활동에 기간 없음 → ERROR[확인]", PROJECT, PROFILE.replace("2025.03 ~ 2025.06 |", "|"), 1, ("활동.교내 해커톤 운영진", "날짜가 없다"), ()),
         ("facts_lint '활동 없음' 기록은 통과", PROJECT, PROFILE.replace("- 교내 해커톤 운영진 | 교내 | 2025.03 ~ 2025.06 | 접수 페이지 개발 `[src: interview]`", "- 활동 없음 `[src: interview]`"), 0, ("ERROR 0",), ()),
+        ("facts_lint 직무명 없음, 직군 백엔드 → ERROR[수정] (D-P1-5)", PROJECT, PROFILE.replace("- 직무명: 백엔드 개발자 `[src: interview]`\n", ""), 1, ("ERROR[수정]", "직무명: 백엔드 개발자"), ()),
+        ("facts_lint 직무명 없음, 직군 풀스택·인프라 → ERROR[확인]", PROJECT, PROFILE.replace("- 직무명: 백엔드 개발자 `[src: interview]`\n", "").replace("직군: 백엔드", "직군: 풀스택·인프라"), 1, ("ERROR[확인]", "직군·경력.직무명"), ()),
+        ("facts_lint 옛 기록: 직군이 기본 정보에 있어도 직무명 제안 → ERROR[수정]", PROJECT, PROFILE.replace("- 직군: 백엔드 `[src: interview]`\n- 직무명: 백엔드 개발자 `[src: interview]`\n", "").replace("- 이름: 홍길동 `[src: interview]`\n", "- 이름: 홍길동 `[src: interview]`\n- 직군: 모바일 `[src: interview]`\n"), 1, ("ERROR[수정]", "직무명: 모바일 개발자"), ()),
+        ("facts_lint 자리표시 전화번호 → ERROR[확인] (D-P1-6)", PROJECT, PROFILE.replace("## 연락처\n", "## 연락처\n- 전화번호: 010-1111-1111 `[src: interview]`\n"), 1, ("ERROR[확인]", "자리표시", "010-1111-1111"), ()),
+        ("facts_lint example.com 이메일 → ERROR[확인]", PROJECT, PROFILE.replace("hong.gildong@gmail.com", "hong@example.com"), 1, ("자리표시", "example.com"), ()),
+        ("facts_lint 값 없는 연락처 줄 → ERROR[수정]", PROJECT, PROFILE.replace("## 연락처\n", "## 연락처\n- 전화번호:\n"), 1, ("ERROR[수정]", "값이 없는 연락처"), ()),
         ("facts_lint 이미지 종류 오류 → ERROR[수정]", PROJECT.replace("screen.png | 서비스 화면", "screen.png | 스크린샷"), PROFILE, 1, ("허용되지 않는 이미지 종류", "ERROR[수정]"), ()),
     ]
     for i, (name, proj, prof, code, has, lacks) in enumerate(variants):
@@ -438,6 +465,9 @@ def facts_tests(tmp: Path) -> None:
     nums("check_numbers 근거없음 줄의 수치는 단위가 맞아도 UNVERIFIED", "<p>오류율 12%</p>", 1, ("UNVERIFIED",))
     nums("check_numbers 기록을 세어 쓴 개수(DB 2개) → MISSING (R-EVD-1)", "<p>서버 3대, DB 2개</p>", 1, ("2개",))
     nums("check_numbers '배포'의 '배'는 단위 아님 (오탐 회귀)", "<p>10배포</p>", 0, ("문제 0건",))
+    (nf / "b.md").write_text("> 처음엔 막막했지만... 결국 끝까지 해냈다\n", encoding="utf-8")
+    nums("check_numbers 인용을 말줄임으로 자름 → CUT (D-TXT-7)", "<p>측정 조건을 먼저 정해야 한다는 걸…</p>", 1, ("CUT",))
+    nums("check_numbers 원문에 있는 말줄임은 통과", "<p>처음엔 막막했지만… 결국 끝까지 해냈다</p>", 0, ("문제 0건",))
 
 
 def pair_tests(tmp: Path) -> None:
@@ -846,8 +876,17 @@ def upload_tests(tmp: Path) -> None:
     results.append(("hook 검사 뒤에 바뀐 PDF는 안 보냄", code == 0 and len(got) == n0, f"보낸 수 {len(got) - n0}"))
     mark(True)
     code = fire(ev)
+    results.append(("hook 감사 전 중간본(.build.json audit 없음)은 안 보냄 (최종본만)", code == 0 and len(got) == n0, f"보낸 수 {len(got) - n0}"))
+    (hout / "index.html").write_text("<html>감사 후</html>", encoding="utf-8")
+    build_mark = {"indexSha256": hashlib.sha256((hout / "index.html").read_bytes()).hexdigest(), "audit": "audit-1.md"}
+    (hout / ".build.json").write_text(json.dumps(build_mark), encoding="utf-8")
+    (hout / "index.html").write_text("<html>감사 뒤 리뷰로 다시 고침</html>", encoding="utf-8")
+    code = fire(ev)
+    results.append(("hook 감사 뒤 HTML이 바뀐 PDF는 안 보냄 (최종본만)", code == 0 and len(got) == n0, f"보낸 수 {len(got) - n0}"))
+    (hout / "index.html").write_text("<html>감사 후</html>", encoding="utf-8")
+    code = fire(ev)
     sent_ok = code == 0 and len(got) == n0 + 1 and "김훅.pdf".encode() in got[-1]
-    results.append(("hook 검사 통과한 새 PDF는 보냄(이름.pdf)", sent_ok, f"code {code}, 보낸 수 {len(got) - n0}"))
+    results.append(("hook 감사까지 끝난 최종 PDF는 보냄(이름.pdf)", sent_ok, f"code {code}, 보낸 수 {len(got) - n0}"))
     code = fire(ev)
     results.append(("hook 같은 PDF는 다음 턴에 다시 안 보냄", code == 0 and len(got) == n0 + 1, f"보낸 수 {len(got) - n0}"))
     code = fire("이건 JSON이 아님")
@@ -907,6 +946,9 @@ def docs_tests() -> None:
     skills = sorted((ROOT / "skills").glob("*/SKILL.md"))
     missing = [str(s.relative_to(ROOT)) for s in skills if "**먼저 읽는다**" not in s.read_text(encoding="utf-8")]
     results.append(("docs 모든 스킬에 '먼저 읽는다'", not missing, "ok" if not missing else f"없음: {missing}"))
+    docs = skills + sorted((ROOT / "agents").glob("*.md"))
+    no_ko = [str(d.relative_to(ROOT)) for d in docs if not any(k in d.read_text(encoding="utf-8") for k in ("**한국어로 말한다**", "**보고는 한국어로 쓴다.**"))]
+    results.append(("docs 모든 스킬·에이전트에 한국어 보고 규칙", not no_ko, "ok" if not no_ko else f"없음: {no_ko}"))
     nostop = [str(s.relative_to(ROOT)) for s in skills if "읽지 못하면(파일 없음·읽기 실패) 이 스킬의 작업을 시작하지 않는다" not in s.read_text(encoding="utf-8")]
     results.append(("docs 모든 스킬이 원칙 문서를 못 읽으면 멈춤", not nostop, "ok" if not nostop else f"없음: {nostop}"))
     ud = (rules / "user-decisions.md").read_text(encoding="utf-8")
