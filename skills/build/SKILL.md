@@ -325,7 +325,7 @@ python3 <S>/export.py portfolio/out/index.html <a4|continuous> portfolio/out/por
    ```bash
    python3 <S>/upload.py portfolio/out/portfolio.pdf
    ```
-   - 플러그인 루트에 `upload.json`이 있을 때만 보낸다(테스트용 zip). 없으면 "설정 없음 — 건너뜀"으로 끝난다
+   - 플러그인 루트에 `upload.json`이 있을 때만 보낸다(테스트 배포용). 없으면 "설정 없음 — 건너뜀"으로 끝난다
    - 같은 PDF는 한 번만 간다(start·audit가 끝에서 다시 불러도 "이미 보냄"). 실패해도 다시 시도하거나 작업을 멈추지 않는다
    - 이 단계를 빠뜨려도 플러그인의 턴 끝 훅(`hooks/upload_on_stop.py`)이 export 검사를 통과한 새 PDF를 보낸다. 그래도 보고 한 줄을 위해 여기서 부른다. 스킬 흐름 밖에서 HTML을 고치고 export만 다시 돌린 경우에도 마찬가지다
    - 출력 한 줄을 보고 맨 끝에 그대로 옮긴다. 보냈으면 "완성된 PDF가 테스트 운영자에게 전송됐어"를 덧붙인다

@@ -3,7 +3,7 @@
 
 사용법: python3 tests/run_tests.py [--fast]
 
-검사 대상: rules/ 단일 원본 구조, facts_lint, facts_stats, check_numbers, pair_blocks(audit), log_answers 훅·근거 원문 대조, env_check, image_info, layout_check, link_check, upload(+배포 zip), export.py, scripts/test_env.py
+검사 대상: rules/ 단일 원본 구조, facts_lint, facts_stats, check_numbers, pair_blocks(audit), log_answers 훅·근거 원문 대조, env_check, image_info, layout_check, link_check, upload, export.py, scripts/test_env.py
   --fast  headless Chrome이 필요한 export.py 테스트를 건너뛴다 (나머지는 몇 초)
 
 테스트용 HTML·기록·이미지를 임시 폴더에 만들고, 각 스크립트의 종료 코드와 출력 문구를 확인한다.
@@ -531,6 +531,27 @@ def provenance_tests(tmp: Path) -> None:
     code2 = subprocess.run([sys.executable, "-I", str(hook)], input="JSON 아님", capture_output=True, text=True, timeout=30).returncode
     results.append(("log_answers 기록이 없거나 입력이 깨져도 종료 0", code == 0 and code2 == 0, f"{code}, {code2}"))
 
+    # 근거 원문 보호(guard_log.py): 모델이 근거 원문을 고치려는 도구 호출은 종료 코드 2로 막는다
+    guard = ROOT / "hooks" / "guard_log.py"
+    lp = str(log)
+
+    def blocked(tool: str, inp: dict) -> bool:
+        p = subprocess.run([sys.executable, "-I", str(guard)], input=json.dumps({"tool_name": tool, "tool_input": inp}, ensure_ascii=False),
+                           capture_output=True, text=True, timeout=30)
+        return p.returncode == 2 and "D-TXT-6" in p.stderr
+    must_block = [("Write", {"file_path": lp, "content": "x"}), ("Edit", {"file_path": lp, "old_string": "a", "new_string": "b"}),
+                  ("Write", {"file_path": str(log.parent / ".interview-log.json"), "content": "{}"}),
+                  ("Bash", {"command": f"echo '- 9,999ms' >> {lp}"}), ("Bash", {"command": f"sed -i 's/1/2/' {lp}"}),
+                  ("Bash", {"command": f"rm {lp}"}), ("Bash", {"command": f"cat x | tee -a {lp}"}),
+                  ("Bash", {"command": f"python3 -c \"open('{lp}','a').write('1')\""}), ("Bash", {"command": f"cat {lp} > /tmp/a && mv /tmp/a {lp}"})]
+    must_pass = [("Read", {"file_path": lp}), ("Bash", {"command": f"cat {lp}"}), ("Bash", {"command": f"grep -n 241 {lp} | head"}),
+                 ("Write", {"file_path": str(facts_dir := cwd / "portfolio" / "facts" / "dms.md"), "content": "x"}),
+                 ("Bash", {"command": "ls portfolio/sources && python3 facts_lint.py portfolio/facts"}), ("Bash", {"command": "echo hi > out.txt"})]
+    wrong = [f"{t} {i}" for t, i in must_block if not blocked(t, i)] + [f"(막힘) {t} {i}" for t, i in must_pass if blocked(t, i)]
+    results.append((f"guard_log 근거 원문 쓰기 {len(must_block)}가지 막고 읽기·다른 파일 {len(must_pass)}가지는 통과", not wrong, "; ".join(wrong)[:600]))
+    p = subprocess.run([sys.executable, "-I", str(guard)], input="깨진 입력", capture_output=True, text=True, timeout=30)
+    results.append(("guard_log 입력이 깨지면 막지 않음(종료 0)", p.returncode == 0, f"code {p.returncode}"))
+
     # facts_lint 대조
     facts = cwd / "portfolio" / "facts"
     facts.mkdir()
@@ -729,7 +750,7 @@ def layout_tests(tmp: Path) -> None:
 
 
 def upload_tests(tmp: Path) -> None:
-    """upload.py(PDF 전송, D-FLOW-8)와 배포 zip. 네트워크 없이 로컬 가짜 Discord 웹훅으로 본다."""
+    """upload.py(PDF 전송, D-FLOW-8). 네트워크 없이 로컬 가짜 Discord 웹훅으로 본다."""
     import threading
     from http.server import BaseHTTPRequestHandler, HTTPServer
     got: list[bytes] = []
@@ -839,19 +860,6 @@ def upload_tests(tmp: Path) -> None:
     big.write_bytes(b"%PDF" + b"0" * (11 * 1024 * 1024))
     c, o = run([up, str(big), "--config", str(cfg)])
     check("upload 10MB 넘으면 보내지 않음", c, o, 1, ("제한을 넘는다",), ())
-
-    # 배포 zip: 플러그인 파일만, 개발용·OMC 상태는 빠짐
-    z = tmp / "h.zip"
-    p = subprocess.run(["bash", str(ROOT / "scripts" / "make-zip.sh"), str(z)], capture_output=True, text=True)
-    names = subprocess.run(["unzip", "-Z1", str(z)], capture_output=True, text=True).stdout if z.exists() else ""
-    need = ("portfolio-harness/.claude-plugin/plugin.json", "portfolio-harness/rules/principles.md",
-            "portfolio-harness/skills/build/scripts/upload.py", "portfolio-harness/skills/build/scripts/measure.js",
-            "portfolio-harness/hooks/hooks.json", "portfolio-harness/hooks/upload_on_stop.py")
-    banned = ("/tests/", "/deploy/", ".omc", "__pycache__", "temp.py", "test_env.py")
-    miss = [n for n in need if n not in names]
-    leak = [b for b in banned if b in names]
-    results.append(("upload 배포 zip에 플러그인 파일만 들어감", p.returncode == 0 and not miss and not leak,
-                    f"code {p.returncode}, 없음 {miss}, 들어감 {leak}\n{p.stdout}{p.stderr}"))
 
 
 def link_tests(tmp: Path) -> None:
