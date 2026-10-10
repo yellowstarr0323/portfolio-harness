@@ -14,5 +14,6 @@ python3 tests/run_tests.py --fast   # export.py 제외 (몇 초)
 ```
 
 - 검사 스크립트에 새 검사를 넣거나 고치면 `tests/run_tests.py`에 통과·실패 사례를 하나씩 추가한다.
+- `rules/user-decisions.md`에 결정을 추가할 때 번호는 추가 직전에 `python3 scripts/next_id.py D-DES`처럼 받는다. 동시 세션이 같은 번호를 쓴 적이 있다(D-DES-14). 중복은 테스트가 잡는다.
 - `export.py`의 브라우저 측정 코드는 `skills/build/scripts/measure.js`에 있다. 파이썬 문자열 안에 JS를 다시 넣지 않는다(% 와 역슬래시 이스케이프로 여러 번 깨졌다).
 - E2E 테스트(처음 쓰는 사람 조건)는 `./scripts/test-start.sh` → 새 세션에서 테스트 → `./scripts/test-end.sh` 순서로 한다. 위키 훅·OMC·전역 CLAUDE.md를 바꾼 것만 되돌린다. 훅·플러그인 설정은 세션 시작 때 읽히므로 start·end 뒤에는 새 세션을 연다.

@@ -18,6 +18,9 @@
   5. 범용 형식(problem-solving·text)은 세부 설명이 3개 이상인 프로젝트에서 각각 절반을 넘지 못한다.
      어떤 작업에도 쓸 수 있는 형식이라, 많아지면 모든 작업이 같은 형식으로 보인다(2026-10-10)
   6. metric-compare는 대표 수치(.ba-lead)가 단계 카드·측정 화면보다 먼저 나온다 — 가장 먼저 보여야 할 것이 수치다
+  7. problem-solving의 라벨(<dt>)이 모두 일반 라벨(상황·배경·문제·원인·해결·결과·성과·개선)이면 실패 — 기록의 실제 분석 단계
+     ("가설", "EXPLAIN 확인", "발견")를 하나 이상 쓴다. 문서 규칙만 있던 것을 옮김(E-9, 10-10)
+  8. 세부 설명이 2개 이하인 프로젝트에서 둘 다 problem-solving이면 실패(반복 이유가 있어도) — 절반 상한(5)은 3개 이상에서만 걸린다
 프로젝트는 문서 순서에서 가장 최근의 <header data-project="…">로 나눈다.
 종료 코드: 통과 0, 실패 1, 실행 불가 2.
 """
@@ -40,6 +43,7 @@ MARKERS = {
     "code": ("코드 발췌 <pre>", ("tag:pre",)),
     "image-feature": ("큰 이미지 <img>", ("tag:img",)),
 }
+GENERIC_LABELS = {"상황", "배경", "문제", "원인", "해결", "결과", "성과", "개선"}   # 어떤 작업에도 붙는 라벨
 GENERIC = {"problem-solving", "text"}   # 어떤 작업에도 쓸 수 있는 범용 형식 — 절반 상한
 VOID = {"area", "base", "br", "col", "embed", "hr", "img", "input", "link", "meta", "source", "track", "wbr"}
 
@@ -60,7 +64,7 @@ class Sections(HTMLParser):
         if tag == "section" and a.get("data-role") == "project-detail" and self.cur is None:
             title = a.get("data-fact", "").split(",")[0].split("#")[-1].strip()
             self.cur = {"project": self.project, "layout": a.get("data-layout"), "repeat": a.get("data-layout-repeat"),
-                        "title": title, "marks": set(), "order": [], "line": self.getpos()[0]}
+                        "title": title, "marks": set(), "order": [], "labels": [], "line": self.getpos()[0]}
             self.depth = len(self.stack) + 1
         elif self.cur is not None:
             m = self.cur["marks"]
@@ -74,8 +78,14 @@ class Sections(HTMLParser):
                     self.cur["order"].append(c)
             if tag == "img" and a.get("data-kind") == "diagram":
                 m.add("diagram")
+            if tag == "dt":
+                self.cur["labels"].append("")
         if tag not in VOID:
             self.stack.append(tag)
+
+    def handle_data(self, data):
+        if self.cur is not None and self.stack and "dt" in self.stack and self.cur["labels"]:
+            self.cur["labels"][-1] += data
 
     def handle_startendtag(self, tag, attrs):
         self.handle_starttag(tag, attrs)
@@ -121,6 +131,10 @@ def check(html: str, keys: set[str]) -> tuple[list[str], list[str]]:
                     fails.append(f"{name}: '{key}'인데 그 모양의 부품이 없다 — {desc}")
             if key == "metric-compare" and "ba-lead" in s["order"] and s["order"][0] != "ba-lead":
                 fails.append(f"{name}: metric-compare인데 대표 수치(.ba-lead)보다 {s['order'][0]}가 먼저 나온다 — 수치를 맨 위에 둔다")
+            labels = [l.strip() for l in s["labels"] if l.strip()]
+            if key == "problem-solving" and labels and all(l in GENERIC_LABELS for l in labels):
+                fails.append(f"{name}: 라벨이 일반 라벨({'·'.join(labels)})뿐이다 — 기록의 실제 분석 단계(\"가설\", \"EXPLAIN 확인\", "
+                             f"\"발견\")를 하나 이상 라벨로 쓴다")
             if key != "problem-solving" and "role:steps" in s["marks"]:
                 fails.append(f"{name}: 라벨 단계 목록(data-role=\"steps\")은 problem-solving 섹션에서만 쓴다 ('{key}' 섹션)")
             if key in seen:
@@ -132,6 +146,9 @@ def check(html: str, keys: set[str]) -> tuple[list[str], list[str]]:
             else:
                 seen[key] = s["title"] or key
         counted = [s["layout"] for s in secs if s["layout"] in keys]
+        if 2 <= len(counted) <= 2 and counted.count("problem-solving") == 2:
+            fails.append(f"[{proj or '?'}] 세부 설명 2개가 모두 problem-solving(라벨 행)이다 — 한 프로젝트에 한 번이 기본. "
+                         f"하나는 이야기 모양에 맞는 다른 키로 그린다")
         if len(counted) >= 3:
             for key in set(counted) & GENERIC:
                 n = counted.count(key)

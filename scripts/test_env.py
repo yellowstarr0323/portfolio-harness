@@ -162,7 +162,10 @@ def start(keep_omc: bool, keep_md: bool) -> int:
         print("확인 실패:\n  - " + "\n  - ".join(problems))
         return 1
     print("\n테스트 환경 준비 완료. 설정은 세션 시작 때 읽히므로 **새 세션**에서 테스트한다:")
-    print("  mkdir -p ~/pf-fresh && cd ~/pf-fresh && claude --plugin-dir ~/portfolio-harness")
+    # 매번 빈 폴더에서 시작한다(처음 쓰는 사람 조건). 옛 결과가 남은 ~/pf-fresh를 다시 쓰면 "이어서" 흐름이 섞인다
+    work = Path.home() / f"pf-e2e-{datetime.now():%m%d-%H%M}"
+    plugin = Path(__file__).resolve().parent.parent
+    print(f"  mkdir -p {work} && cd {work} && claude --plugin-dir {plugin}")
     print("끝나면 test-end를 실행한다.")
     return 0
 

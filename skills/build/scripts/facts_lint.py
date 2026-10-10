@@ -323,6 +323,7 @@ def fact_values(tok: str) -> list[str]:
     return [norm(tok)]
 
 
+DATE_TOK = re.compile(r"(\d{4})\.(\d{1,2})(?:\.(\d{1,2}))?")
 ARROW = re.compile(r"(?<![\w.])(\d[\d,.]*)\s*[A-Za-z%가-힣]{0,6}\s*(?:→|->)\s*[~약]?\s*(\d[\d,.]*)")
 
 
@@ -338,6 +339,10 @@ def lint_provenance(facts: Path, sources: Path, iss: Issues) -> None:
                  "이 기능 전에 만든 기록이다. 플러그인 훅이 켜진 세션에서 인터뷰하면 자동으로 생긴다")
         return
     image_only: list[str] = []
+    year_only: list[str] = []
+    # 대화한 해: 근거 원문 기록의 머리(## 2026-10-10 14:00 · …)에 있는 연도. 사용자가 "3월"이라고만 했을 때
+    # 모델이 붙인 연도가 대화한 해이면 오류 대신 확인 경고로 둔다(다른 해를 붙였으면 추측이라 오류)
+    talk_years = set(re.findall(r"^## (\d{4})-", (sources / "interview-log.md").read_text(encoding="utf-8", errors="replace"), re.M))
     how = ("지어냈거나 계산한 값이면 기록에서 지운다. 사용자가 말한 값이면 질문 도구(AskUserQuestion) 선택지에 "
            "이 수치를 그대로 넣어 맞는지 확인받는다(고른 답이 근거 원문에 남는다). 근거 원문 파일은 고치지 않는다")
     for path in sorted(facts.glob("*.md")):
@@ -369,6 +374,11 @@ def lint_provenance(facts: Path, sources: Path, iss: Issues) -> None:
             seen = set().union(*pool) if pool else set()
             clean = NOISE.sub(" ", TAG.sub(" ", line))
             missing = [m.group() for m in FACT_NUM.finditer(clean) if not all(v in seen for v in fact_values(m.group()))]
+            guessed = [t for t in missing if (d := DATE_TOK.fullmatch(t)) and d.group(1) in talk_years
+                       and all(v in seen for v in fact_values(t)[1:])]
+            if guessed:
+                year_only.append(f"{path.name}: {', '.join(guessed)}")
+                missing = [t for t in missing if t not in guessed]
             # 개선 전 → 후는 두 값이 원문 한 곳(메시지·답·자료 하나)에 같이 있어야 한다 — 흔한 작은 수가 우연히 통과하지 않게
             split = [f"{a} → {b}" for a, b in ((x.rstrip(",."), y.rstrip(",.")) for x, y in ARROW.findall(clean))
                      if a not in missing and b not in missing
@@ -385,6 +395,9 @@ def lint_provenance(facts: Path, sources: Path, iss: Issues) -> None:
             elif split:
                 iss.ask(path.name, section or "-", f"개선 전·후 수치 {', '.join(split)}가 원문 한 곳에 같이 나온 적이 없다 — \"{line.strip()[:80]}\"",
                         "두 값을 사용자가 따로 말했거나 다른 자료에서 왔다. 짝이 맞는지 \"A → B\" 그대로 선택지에 넣어 확인받는다. " + how.split(". ", 1)[0] + ".")
+    if year_only:
+        iss.warn("-", "근거 원문", f"사용자가 월만 말한 날짜에 대화한 해를 붙였다 — {' / '.join(year_only)}",
+                 "연도가 맞는지 끝 보고나 다음 질문에서 한 번 확인받는다. 다른 해면 기록을 고친다")
     if image_only:
         iss.warn("-", "근거 원문", f"이미지 자료에서 읽은 수치(글자 자료·사용자 말에 없음) — {' / '.join(image_only)}",
                  "글자로 대조할 수 없다. 이미지에 실제로 있는 값인지 다시 열어 보고, 사용자에게 한 번 확인받는다")

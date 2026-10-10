@@ -36,6 +36,8 @@
    - 1쪽 직무명(실패, D-P1-5): data-layout="profile" 쪽에 data-role="job-title"이 없거나 비면 실패. 레퍼런스 모드에서도 본다
    - 글자 대비(D-DES-1): 글자색과 실제 바탕색(조상의 background-color)의 대비가 1.5:1 미만이면 안 보이는 글자로 실패(레퍼런스 모드 포함),
      4.5:1(큰 글자 3:1) 미만이면 경고. 바탕이 배경 이미지·그라디언트면 건너뛴다
+   - 1쪽 첫머리 순서(실패, D-P1-1): name → job-title → tagline. 레퍼런스 모드에서는 보지 않는다
+   - 모노 폰트 수치(경고, D-DES-10): before → after·강조 수치에 모노 글꼴
    - 쪽 수(경고, D-DES-17): 1 + 3 × 프로젝트 수(page-title 개수)를 넘으면 경고
    - 이미지: 로드 실패(naturalWidth 0)는 실패. 인쇄 폭 대비 원본 픽셀이 LOWRES_RATIO 배 미만이면 '흐릿함 경고'(SVG는 벡터라 제외) 
    - continuous: 문서 높이를 재서 @page 높이를 정한다
@@ -258,10 +260,18 @@ def main(html_path: str, fmt: str, pdf_out: str, ref: bool = False) -> int:
         profile = next((i for i, t in enumerate(sheet_tags) if 'data-layout="profile"' in t.group()), None)
         if profile is not None:
             end = sheet_tags[profile + 1].start() if profile + 1 < len(sheet_tags) else len(html)
-            job = re.search(r'data-role="job-title"[^>]*>\s*([^<\s][^<]*)<', html[sheet_tags[profile].end():end])
+            page1 = html[sheet_tags[profile].end():end]
+            job = re.search(r'data-role="job-title"[^>]*>\s*([^<\s][^<]*)<', page1)
             if not job:
                 ok = False
                 print('1쪽 실패: 이름 아래 직무명(data-role="job-title")이 없다. 기록의 `직무명:`을 이름 바로 아래에 넣는다 (D-P1-5)')
+            # 1쪽 첫머리 순서(D-P1-1): 이름 → 직무명 → 한 줄 소개. 배치는 레퍼런스가 정하므로 레퍼런스 모드에서는 보지 않는다
+            pos = [(r, page1.find(f'data-role="{r}"')) for r in ("name", "job-title", "tagline")]
+            pos = [(r, i) for r, i in pos if i >= 0]
+            if not ref and [r for r, _ in sorted(pos, key=lambda x: x[1])] != [r for r, _ in pos]:
+                ok = False
+                print(f"1쪽 실패: 첫머리 순서가 {' → '.join(r for r, _ in sorted(pos, key=lambda x: x[1]))} — "
+                      "이름 → 직무명 → 한 줄 소개 순서로 둔다 (D-P1-1)")
         # 글자 대비(D-DES-1): 1.5:1 미만은 안 보이는 글자라 실패(레퍼런스 모드 포함 — 내용이 사라진다). 4.5:1(큰 글자 3:1) 미만은 경고
         for c_ in m.get("contrast", []):
             where = f"sheet {c_['sheet']}" if c_["sheet"] else "쪽 밖"

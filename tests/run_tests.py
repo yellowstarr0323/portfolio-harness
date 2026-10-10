@@ -130,7 +130,7 @@ def portfolio_html(*, period_below=False, retro_first=False, pair_split=False, s
                    running_header=False, arrow_top=False, small_font=False, plain_ba=False,
                    hidden_tall=False, intro_arrow=False, lowres=False, diagram_pair="",
                    no_layout=False, shapes=False, links="", link_base="", ruled_wrapper=False,
-                   job_title=None, extra_sheets=0, contrast="") -> str:
+                   job_title=None, extra_sheets=0, contrast="", p1_swap=False, mono=False) -> str:
     period = '<span class="period" data-role="project-meta">2026.03 ~ 운영 중</span>'
     if period_below:
         head_row = '<div class="head-row"><img data-kind="logo" src="assets/logo.svg" alt=""><h1 data-role="page-title">DMS</h1></div>' \
@@ -144,7 +144,7 @@ def portfolio_html(*, period_below=False, retro_first=False, pair_split=False, s
     pair_both = f'<div class="measure-pair" data-role="measure-pair">{measure("before")}{measure("after")}</div>'
     detail = ('<section data-role="project-detail"' + ('' if no_layout else ' data-layout="problem-solving"') + '>'
               '<h2 data-role="section-title">상벌점 조회 성능 개선</h2>'
-              '<dl class="steps" data-role="steps"><dt>원인</dt><dd>상관 서브쿼리가 학생마다 다시 실행됐다.</dd>'
+              '<dl class="steps" data-role="steps"><dt>EXPLAIN 확인</dt><dd>상관 서브쿼리가 학생마다 다시 실행됐다.</dd>'
               '<dt>해결</dt><dd>서브쿼리를 없애고 최신 이력을 코드에서 골랐다.</dd></dl>'
               + ('' if pair_split else pair_both)
               + (f'<div class="measure-pair" data-role="measure-pair">{measure("after")}</div>' if pair_split else '')
@@ -152,7 +152,8 @@ def portfolio_html(*, period_below=False, retro_first=False, pair_split=False, s
     retro = '<section data-role="project-retro"><h2 data-role="section-title">전체 회고</h2><p>측정 조건을 먼저 정해야 한다는 걸 배웠다.</p></section>'
     layout = ' data-layout="profile"' if intro_arrow or job_title is not None else ''
     sheet1 = (f'<section class="sheet"{layout}>{top}'
-              + (f'<h1 data-role="name">홍길동</h1><p data-role="job-title">{job_title}</p>' if job_title is not None else '')
+              + ((f'<p data-role="job-title">{job_title}</p><h1 data-role="name">홍길동</h1>' if p1_swap else
+                  f'<h1 data-role="name">홍길동</h1><p data-role="job-title">{job_title}</p>') if job_title is not None else '')
               + ('<p data-role="headline">로컬 부하 테스트에서 학생 목록 조회는 1,225ms → 241ms로 줄였습니다.</p>' if intro_arrow else '')
               + f'<header data-project="dms">{head_row}'
               '<p data-role="project-summary">학생과 교사가 쓰는 기숙사 관리 서비스</p>'
@@ -164,7 +165,7 @@ def portfolio_html(*, period_below=False, retro_first=False, pair_split=False, s
               + '<img data-kind="screen" data-project="dms" src="assets/screen.png" alt="" style="width:300px">'
               '<ul data-role="project-features"><li>새벽자습 신청</li><li>상벌점 조회</li></ul>'
               '<section data-role="project-highlights">'
-              '<p class="ba" data-role="before-after"><span class="before">1,225ms</span><span class="arrow">→</span><span class="after">241ms</span></p>'
+              '<p class="ba" data-role="before-after"><span class="before"' + (' style="font-family:monospace"' if mono else '') + '>1,225ms</span><span class="arrow">→</span><span class="after">241ms</span></p>'
               '<p class="ba-cond" data-role="measure-cond">Gatling, 요청 10개 평균</p>'
               + ('<p>1,000ms → 100ms</p>' if plain_ba else '')
               + ('<p style="font-size:7pt">아주 작은 글자</p>' if small_font else '')
@@ -233,6 +234,8 @@ def export_tests(tmp: Path) -> None:
         ("export 링크: 열리지 않는 주소(404) → 실패", {"links": "dead", "link_base": lbase}, 1, ("링크가 열리지 않는다", "404"), ()),
         ("export 1쪽에 직무명 있음 → 통과 (D-P1-5)", {"job_title": "백엔드 개발자"}, 0, ("통과:",), ("직무명",)),
         ("export 1쪽에 직무명 없음 → 실패", {"job_title": ""}, 1, ("1쪽 실패", "job-title"), ()),
+        ("export 1쪽 직무명이 이름보다 위 → 실패 (D-P1-1, E-9)", {"job_title": "백엔드 개발자", "p1_swap": True}, 1, ("첫머리 순서", "job-title → name"), ()),
+        ("export 수치에 모노 글꼴 → 경고 (D-DES-10, E-9)", {"mono": True}, 0, ("모노 글꼴",), ()),
         ("export 쪽 수 권장 범위 초과 → 경고만 (D-DES-17)", {"extra_sheets": 3}, None, ("쪽 수 경고: 5쪽", "4쪽 이하"), ()),
         ("export 쪽 수 권장 범위 안 → 경고 없음", {}, 0, (), ("쪽 수 경고",)),
         ("export 글자색 = 바탕색(띠 위 안 보이는 글자) → 실패", {"contrast": "invisible"}, 1, ("안 보이는 글자 실패", "띠 위 라벨"), ()),
@@ -598,6 +601,18 @@ def provenance_tests(tmp: Path) -> None:
     # PROJECT 픽스처 자체의 줄(요청 10개 등)은 이 근거 원문에 없어 ERROR가 날 수 있으므로 종료 코드는 보지 않는다
     prov("facts_lint 근거 원문·받은 자료에 있는 수치 → 대조 통과", base_ok, None, (), ("없는 수치 1,225", "없는 수치 300", "없는 수치 30.37", "없는 수치 3.2", "없는 수치 2026.03"))
     prov("facts_lint 사용자가 연도 없이 말한 날짜에 연도를 붙임 → ERROR[확인]", "- 출시 2025.03 `[src: interview]`", 1, ("없는 수치 2025.03",))
+    # "3월" 문제: 사용자가 월만 말했는데 모델이 연도를 붙임. 다른 메시지에 연도가 없는 근거 원문으로 따로 본다
+    mcwd = tmp / "month-only" / "portfolio"
+    (mcwd / "facts").mkdir(parents=True)
+    (mcwd / "sources").mkdir()
+    (mcwd / "sources" / "interview-log.md").write_text("# 근거 원문\n\n## 2026-10-10 12:00 · 사용자 메시지\n\n앱 출시는 5월에 했어\n", encoding="utf-8")
+    def month(name, line, code, has, lacks=()):
+        (mcwd / "facts" / "m.md").write_text("---\nproject: M\nslug: m\n---\n## 개요\n" + line + "\n", encoding="utf-8")
+        c, o = run([str(lint), str(mcwd / "facts")])
+        check(name, c, o, code, has, lacks)
+    month("facts_lint 월만 말한 날짜에 대화한 해를 붙임 → WARN만 (3월 문제)", "- 앱 출시 2026.05 `[src: interview]`", None,
+          ("대화한 해를 붙였다", "2026.05"), ("없는 수치 2026.05",))
+    month("facts_lint 월만 말한 날짜에 다른 해를 붙임 → 여전히 ERROR[확인]", "- 앱 출시 2024.05 `[src: interview]`", 1, ("없는 수치 2024.05",))
     prov("facts_lint 지어낸 수치 → ERROR[확인]", "- 응답 시간 4,321ms로 개선 `[src: interview]`", 1, ("ERROR[확인]", "없는 수치 4,321"))
     prov("facts_lint 모델이 말하거나 질문에만 쓴 수치(9,999·8,888)는 근거 아님", "- 9,999ms, 8,888명 `[src: interview]`", 1, ("9,999", "8,888"))
     prov("facts_lint 다른 자료에 있는 수치 → 출처 태그 ERROR[수정]", "- 비용 $30.37 `[src: interview]`", 1, ("ERROR[수정]", "doc:web-blog.md"))
@@ -749,7 +764,7 @@ def layout_tests(tmp: Path) -> None:
     head = lambda p: f'<header data-project="{p}"><h1 data-role="page-title">{p}</h1></header>'  # noqa: E731
     sec = lambda key, body, extra="": (f'<section data-role="project-detail" data-fact="x.md#{key}"'  # noqa: E731
                                        + (f' data-layout="{key}"' if key else "") + f'{extra}><h2>{key}</h2>{body}</section>')
-    steps = '<dl class="steps" data-role="steps"><dt>원인</dt><dd>a</dd></dl>'
+    steps = '<dl class="steps" data-role="steps"><dt>EXPLAIN 확인</dt><dd>a</dd><dt>원인</dt><dd>b</dd></dl>'
     tl = '<ol class="timeline" data-role="timeline"><li>a</li></ol>'
     flow = '<div class="flow-compare" data-role="flow-compare"></div>'
     lead = '<p class="ba ba-lead" data-role="before-after"><span class="before">1</span><span class="after">2</span></p>'
@@ -770,6 +785,10 @@ def layout_tests(tmp: Path) -> None:
          + sec("metric-compare", lead, ' data-layout-repeat="둘 다 측정된 개선"'), 0, ("통과", "다시 씀"), ("절반",)),
         ("layout_check metric-compare인데 수치보다 단계 카드가 먼저 → 실패", head("dms")
          + sec("metric-compare", '<ol class="stage-cards" data-role="stage-cards"><li>a</li></ol>' + lead), 1, ("먼저 나온다",), ()),
+        ("layout_check 라벨이 상황·원인·해결뿐 → 실패 (E-9)", head("dms") + sec("problem-solving",
+         '<dl class="steps" data-role="steps"><dt>상황</dt><dd>a</dd><dt>원인</dt><dd>b</dd><dt>해결</dt><dd>c</dd></dl>'), 1, ("일반 라벨", "상황·원인·해결"), ()),
+        ("layout_check 세부 설명 2개가 모두 라벨 행 → 이유 있어도 실패", head("dms") + sec("problem-solving", steps)
+         + sec("problem-solving", steps, ' data-layout-repeat="r"'), 1, ("모두 problem-solving",), ()),
         ("layout_check 프로젝트가 다르면 같은 키 허용", head("a") + sec("problem-solving", steps) + head("b") + sec("problem-solving", steps), 0, ("통과",), ()),
     ]
     for i, (name, body, code, has, lacks) in enumerate(cases):
@@ -946,6 +965,12 @@ def docs_tests() -> None:
     skills = sorted((ROOT / "skills").glob("*/SKILL.md"))
     missing = [str(s.relative_to(ROOT)) for s in skills if "**먼저 읽는다**" not in s.read_text(encoding="utf-8")]
     results.append(("docs 모든 스킬에 '먼저 읽는다'", not missing, "ok" if not missing else f"없음: {missing}"))
+    ids = _re.findall(r"^\| ((?:D|U|R|C|E)-[A-Z0-9-]*\d+) \|", (rules / "user-decisions.md").read_text(encoding="utf-8"), _re.M)
+    dup = sorted({i for i in ids if ids.count(i) > 1})
+    results.append(("docs 결정 번호 중복 없음 (동시 세션 충돌)", not dup, "ok" if not dup else f"중복: {dup} — scripts/next_id.py로 다시 붙인다"))
+    c, o = run([str(ROOT / "scripts" / "next_id.py"), "D-DES"])
+    top = max(int(i.rsplit("-", 1)[1]) for i in ids if i.startswith("D-DES-"))
+    results.append(("next_id 다음 결정 번호", o.strip() == f"D-DES-{top + 1}", o.strip()))
     docs = skills + sorted((ROOT / "agents").glob("*.md"))
     no_ko = [str(d.relative_to(ROOT)) for d in docs if not any(k in d.read_text(encoding="utf-8") for k in ("**한국어로 말한다**", "**보고는 한국어로 쓴다.**"))]
     results.append(("docs 모든 스킬·에이전트에 한국어 보고 규칙", not no_ko, "ok" if not no_ko else f"없음: {no_ko}"))

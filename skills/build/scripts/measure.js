@@ -133,6 +133,11 @@ function roles(sheet, idx) {
   }
   for (const b of bigEmphasis)
     out.push(`sheet ${idx + 1}: 측정된 before → after가 아닌 글이 소제목 크기로 굵게 강조됨 — "${b.textContent.trim().replace(/\s+/g, ' ').slice(0, 20)}" (크게 강조하는 건 측정 조건이 있는 before → after만, 나머지는 본문 크기 굵게)`);
+  // 큰 수치에 모노 글꼴을 쓰지 않는다(D-DES-10) — 모노는 코드·API 경로만. 문서 규칙만 있던 것을 옮김(E-9)
+  for (const el of sheet.querySelectorAll('[data-role="before-after"] .before, [data-role="before-after"] .after')) {
+    if (/mono|consol|courier|menlo|d2coding/i.test(getComputedStyle(el).fontFamily))
+      out.push(`sheet ${idx + 1}: 수치 "${el.textContent.trim().slice(0, 16)}"에 모노 글꼴 — 모노는 코드·API 경로만 (D-DES-10)`);
+  }
   for (const im of sheet.querySelectorAll('img[data-kind="capture"]')) {
     const w = im.getBoundingClientRect().width;
     if (im.naturalWidth && w / im.naturalWidth < 0.5)
