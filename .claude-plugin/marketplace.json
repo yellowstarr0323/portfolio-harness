@@ -1,0 +1,15 @@
+{
+  "name": "portfolio-harness",
+  "description": "개발 직군 학생용 포트폴리오 하네스 — 인터뷰로 사실을 모으고 근거 있는 내용만으로 HTML/PDF 포트폴리오를 만든다",
+  "owner": {
+    "name": "hansaem",
+    "url": "https://github.com/yellowstarr0323"
+  },
+  "plugins": [
+    {
+      "name": "portfolio-harness",
+      "source": "./",
+      "description": "인터뷰로 사실을 모으고, 근거 있는 내용만으로 HTML/PDF 포트폴리오를 만든다"
+    }
+  ]
+}
