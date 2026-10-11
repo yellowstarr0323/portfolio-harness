@@ -4,7 +4,7 @@
 사용법: python3 tests/run_tests.py          전체 (headless Chrome·poppler 필요)
         python3 tests/run_tests.py --fast   make_pdf 제외 (문서 구조만)
 
-검사 대상: 스킬 문서 구조(frontmatter, 진입점, 참조 경로), make_pdf.py(통과·넘침·깨진 이미지·PNG), scripts/test_env.py
+검사 대상: 스킬 문서 구조(frontmatter, 진입점, 참조 경로), 면접관 에이전트(agents/portfolio-reviewer.md), make_pdf.py(통과·넘침·깨진 이미지·PNG), scripts/test_env.py
 """
 import json
 import os
@@ -45,6 +45,22 @@ def docs_tests() -> None:
             results.append((f"{p.parent.name}: 사용자 트리거 문구 없음(start가 부름)", "start 스킬이 부른다" in m.group(2), m.group(2)[:80]))
     for script in ("make_pdf.py", "measure.js"):
         results.append((f"build/scripts/{script} 있음", (ROOT / "skills" / "build" / "scripts" / script).is_file(), ""))
+    agent = ROOT / "agents" / "portfolio-reviewer.md"
+    at = agent.read_text(encoding="utf-8") if agent.exists() else ""
+    am = re.match(r"---\nname: (\S+)\ndescription: .+?\ntools: (.+?)\n---\n", at, re.S)
+    results.append(("agents/portfolio-reviewer.md: frontmatter·읽기 전용 도구", bool(am) and am.group(1) == "portfolio-reviewer"
+                    and set(t.strip() for t in am.group(2).split(",")) <= {"Read", "Glob", "Grep"}, am.group(2) if am else "없음"))
+    criteria = ["원인을 분석해 해결", "원리와 선택 이유", "직접 수행한 작업", "적절한 근거", "여러 대안",
+                "지원 직무", "짧은 시간", "오류나 모순"]
+    results.append(("portfolio-reviewer: 평가 기준 8개가 모두 있음", all(c in at for c in criteria),
+                    str([c for c in criteria if c not in at])))
+    build_md = (ROOT / "skills" / "build" / "SKILL.md").read_text(encoding="utf-8")
+    results.append(("build가 portfolio-harness:portfolio-reviewer를 PDF 경로만으로 부름",
+                    "portfolio-harness:portfolio-reviewer" in build_md and "PDF 절대 경로만" in build_md and "최대 3회" in build_md, ""))
+    results.append(("portfolio-reviewer: 지적마다 [수정]/[질문] 종류, 없으면 '없음'", "[수정]" in at and "[질문]" in at and "`없음`" in at, ""))
+    loop_rules = ("남은 지적이 0개면 loop를 끝낸다", "거절 목록", "[수정] 지적", "[질문] 지적", "앞 회차 결과, 거절 목록을 넘기지 않는다")
+    results.append(("build loop: 최대 3회·지적 0개면 끝·거절 걸러내기·리뷰어에 앞 회차를 안 넘김",
+                    all(r in build_md for r in loop_rules), str([r for r in loop_rules if r not in build_md])))
     claude_md = (ROOT / "CLAUDE.md").read_text(encoding="utf-8")
     results.append(("CLAUDE.md가 원칙 문서를 @import", "@rules/principles.md" in claude_md, ""))
 

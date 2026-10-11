@@ -20,9 +20,8 @@ description: 포트폴리오 하네스 진입점. 레퍼런스 확인 → 인터
 0. 이전 기록 확인
 1. 레퍼런스 질문 ── 있음 → design "레퍼런스 분석" → interview(레퍼런스 항목 기준) → build(레퍼런스대로)
                  └ 없음 → interview(기본 항목) → design "디자인 추천" → build
-2. build: HTML → PDF
+2. build: HTML → PDF → 리뷰와 수정 반복(loop, 최대 3회: portfolio-reviewer 지적 → 사용자 답 → 다시 만들기, 지적 0개면 끝)
 3. 끝 보고
-(검사 반복 loop: 보류 — build "보류")
 ```
 
 ## 0. 이전 기록 확인
@@ -43,6 +42,7 @@ AskUserQuestion 한 문항: "참고하고 싶은 포트폴리오 레퍼런스가
 - stage: reference | interview | design | build | done
 - reference: 없음 | <경로나 URL>
 - interview: profile | project-list | project-detail | follow-up | done
+- loop: 0/3 | 1/3 | 2/3 | 3/3 | done
 - design: <고른 시안 이름 또는 "레퍼런스">
 - updated: YYYY-MM-DD HH:MM
 ```
@@ -52,6 +52,7 @@ AskUserQuestion 한 문항: "참고하고 싶은 포트폴리오 레퍼런스가
 ## 3. 끝 보고
 - PDF 경로와 쪽수
 - 프로젝트별로 들어간 내용 한 줄씩
+- 리뷰: 회차별 총점 변화, 마지막 한 줄 판단, 남은 지적, 면접에서 물어볼 질문
 - 못 읽은 링크·자료, 사용자가 답하지 않아 비운 항목
 - 수정하는 법: "고칠 내용을 말씀해 주시면 반영해서 다시 만들게요"
 
