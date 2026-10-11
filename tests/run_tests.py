@@ -4,7 +4,7 @@
 사용법: python3 tests/run_tests.py          전체 (headless Chrome·poppler 필요)
         python3 tests/run_tests.py --fast   make_pdf 제외 (문서 구조만)
 
-검사 대상: 스킬 문서 구조(frontmatter, 진입점, 참조 경로), 면접관 에이전트(agents/portfolio-reviewer.md), make_pdf.py(통과·넘침·깨진 이미지·PNG), upload.py·send_on_done.py(Discord 자동 전송), scripts/test_env.py
+검사 대상: 스킬 문서 구조(frontmatter, 진입점, 참조 경로), 면접관 에이전트(agents/portfolio-reviewer.md), make_pdf.py(통과·넘침·깨진 이미지·PNG), upload.py·send_on_done.py(Discord 자동 전송), check_images.py(프로젝트 필수 이미지), scripts/test_env.py
 """
 import json
 import os
@@ -51,6 +51,8 @@ def docs_tests() -> None:
     cats = ["프론트엔드", "백엔드", "DevOps", "앱", "임베디드", "AI", "풀스택", "게임"]
     line = next((l for l in interview.splitlines() if l.startswith("직무 분야:")), "")
     results.append(("interview: 직무 분야 선택지 8개", all(c in line for c in cats), line))
+    results.append(("interview: 로고 1장 + 화면 1장 이상 필수, check_images로 확인",
+                    "로고 1장 + 프로젝트 화면" in interview and "check_images.py" in interview, ""))
     agent = ROOT / "agents" / "portfolio-reviewer.md"
     at = agent.read_text(encoding="utf-8") if agent.exists() else ""
     am = re.match(r"---\nname: (\S+)\ndescription: .+?\ntools: (.+?)\n---\n", at, re.S)
@@ -181,6 +183,40 @@ def send_tests(tmp: Path) -> None:
     srv.server_close()
 
 
+def image_tests(tmp: Path) -> None:
+    """check_images.py — 프로젝트마다 로고 1장 + 화면 1장 이상(필수)."""
+    ci = ROOT / "skills" / "interview" / "scripts" / "check_images.py"
+    pf = tmp / "imgpf"
+    (pf / "projects").mkdir(parents=True)
+    for slug in ("dms", "zipkr"):
+        (pf / "projects" / f"{slug}.md").write_text(f"# {slug}", encoding="utf-8")
+    png = b"\x89PNG\r\n\x1a\n" + b"0" * 20
+
+    def put(slug: str, name: str, data: bytes = png) -> None:
+        (pf / "images" / slug).mkdir(parents=True, exist_ok=True)
+        (pf / "images" / slug / name).write_bytes(data)
+
+    code, out = run([str(ci), str(pf)])
+    check("check_images 이미지 없음 → 실패", code, out, 1, ("빠짐: dms — 로고 없음, 프로젝트 화면 없음",), ())
+    put("dms", "logo.png")
+    put("dms", "screen-1.png")
+    put("zipkr", "logo.svg")
+    code, out = run([str(ci), str(pf)])
+    check("check_images 화면이 없는 프로젝트 → 실패", code, out, 1, ("있음: dms — 로고 1, 화면 1", "빠짐: zipkr — 프로젝트 화면 없음"), ())
+    put("zipkr", "screen-1.gif", b"")
+    code, out = run([str(ci), str(pf)])
+    check("check_images 0바이트 화면은 없는 것으로 봄", code, out, 1, ("빠짐: zipkr — 프로젝트 화면 없음",), ())
+    put("zipkr", "screen-2.webp")
+    put("zipkr", "screen-3.jpg")
+    code, out = run([str(ci), str(pf)])
+    check("check_images 로고 1 + 화면 1장 이상 → 통과", code, out, 0, ("있음: zipkr — 로고 1, 화면 2", "모두 있음"), ())
+    put("dms", "logo.jpg")
+    code, out = run([str(ci), str(pf)])
+    check("check_images 로고 2개 → 실패(하나만)", code, out, 1, ("로고가 2개",), ())
+    code, out = run([str(ci), str(tmp / "없는폴더")])
+    check("check_images 없는 폴더 → 사용법 오류", code, out, 2, ("사용법",), ())
+
+
 def test_env_tests(tmp: Path) -> None:
     """scripts/test_env.py — 백업·되돌리기가 바꾼 것만 다루는지(가짜 ~/.claude로)."""
     claude = tmp / "fake-claude"
@@ -209,6 +245,7 @@ def main() -> int:
         docs_tests()
         test_env_tests(tmp)
         send_tests(tmp)
+        image_tests(tmp)
         if not fast:
             make_pdf_tests(tmp)
     fails = [r for r in results if not r[1]]

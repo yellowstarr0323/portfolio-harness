@@ -23,7 +23,8 @@ description: 포트폴리오 생성 단계. 기록과 디자인(또는 레퍼런
 - 수치는 측정 조건과 같이 쓴다. 조건이 없는 수치는 "약", "체감" 같은 말로 부풀리지 말고 기록 그대로.
 
 ## 3. HTML
-- 파일: `portfolio/out/index.html`, 스타일은 같은 폴더(`style.css`), 이미지는 `portfolio/out/assets/`.
+- 파일: `portfolio/out/index.html`, 스타일은 같은 폴더(`style.css`), 이미지는 `portfolio/images/`에서 `portfolio/out/assets/<슬러그>/`로 복사해 쓴다.
+- **프로젝트마다 로고와 프로젝트 화면을 넣는다.** 로고는 프로젝트 첫머리(이름 옆), 화면은 1장 이상 본문에. 시작 전에 `python3 <이 스킬 디렉터리>/../interview/scripts/check_images.py portfolio`가 `모두 있음`인지 확인하고, 빠졌으면 build를 멈추고 사용자에게 이미지를 부탁한다.
 - **A4 한 장 = `<section class="sheet">` 하나.** `.sheet { width: 210mm; height: 297mm; overflow: hidden; box-sizing: border-box; }`, `@page { size: A4; margin: 0; }`. 쪽 사이 넘김은 `.sheet { page-break-after: always; }`.
 - 링크는 `<a href="https://…">`(절대 주소)로 감싼다.
 - 디자인은 `design.md` 또는 `reference.md`의 색·글꼴·크기·배치를 그대로 쓴다.
