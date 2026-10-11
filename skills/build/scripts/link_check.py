@@ -2,6 +2,7 @@
 """링크 검사 — HTML·PDF에서 링크를 누르면 반드시 그 페이지로 가는지 (사용자 결정 D-DES-14).
 
 사용법: link_check.py <index.html> [--pdf <portfolio.pdf>] [--offline]
+        link_check.py --url <주소> [<주소> ...]   (사용자가 링크를 준 그 턴에 접속만 확인 — interview "링크를 받으면")
 
 검사 (모두 실패):
   1. 보이는 글 중 주소처럼 생긴 것(https://…, www.…, github.com/…, velog.io/…, 이메일 등)은 <a href>로 감싼다
@@ -12,6 +13,8 @@
   4. --pdf: HTML의 모든 http(s)·mailto 링크가 PDF에 누를 수 있는 링크(/URI)로 들어가 있다
   5. 온라인 확인(기본, --offline이면 건너뜀): 주소에 실제로 요청해서 404·410이거나 도메인이 없으면 실패.
      401·403(로그인·봇 차단), 5xx, 시간 초과는 경고 — 사람이 직접 열어 확인한다. 네트워크가 아예 없으면 경고 한 줄
+     GitHub은 로그인 안 한 요청에 비공개 저장소를 404로 준다 — github.com의 404는 "없거나 비공개"로 알린다
+--url: 주소마다 열림/실패/확인 필요를 한 줄씩 찍는다. "github.com/x"처럼 스킴이 없으면 https://를 붙여 본다.
 인쇄에서 숨기는 요소(data-print-hidden)는 PDF에 없으므로 제외한다.
 종료 코드: 통과 0, 실패 1, 사용법 오류 2. 경고만 있으면 0.
 """
@@ -128,6 +131,9 @@ def probe(url: str) -> tuple[str, str]:
             if method == "HEAD" and e.code in (400, 403, 405, 501):
                 continue                                # HEAD를 안 받는 서버가 있다 — GET으로 다시
             if e.code in (404, 410):
+                if e.code == 404 and host_of(url) in ("github.com", "www.github.com"):
+                    return "fail", ("HTTP 404 — 없는 주소이거나 비공개 저장소다. 비공개면 채용 담당자도 열 수 없다 "
+                                    "(공개로 바꾸거나, 링크를 빼거나, 주소를 다시 받는다)")
                 return "fail", f"HTTP {e.code} — 없는 페이지"
             if e.code in (401, 403):
                 return "warn", f"HTTP {e.code} — 로그인이 필요하거나 자동 요청을 막는 페이지. 직접 열어 확인한다"
@@ -200,8 +206,26 @@ def check(html: str, pdf: Path | None, online: bool) -> tuple[list[str], list[st
     return fails, warns, notes
 
 
+def check_urls(urls: list[str]) -> int:
+    """--url: 사용자가 준 주소를 바로 열어 본다. 실패가 있으면 1, 경고·열림만이면 0, 네트워크 없음도 0(경고)."""
+    fails = 0
+    for raw in urls:
+        url = raw if re.match(r"^https?://", raw, re.I) else f"https://{raw}"
+        kind, why = probe(url)
+        label = {"ok": "열림", "fail": "실패", "warn": "확인 필요", "offline": "확인 못 함(네트워크)"}[kind]
+        print(f"{label}: {raw} — {why}" if kind != "ok" else f"{label}: {raw}")
+        fails += kind == "fail"
+    print(f"링크 접속 확인: {'통과' if not fails else f'실패 {fails}건'}")
+    return 1 if fails else 0
+
+
 def main(argv: list[str]) -> int:
     args = argv[1:]
+    if args[:1] == ["--url"]:
+        if len(args) < 2:
+            print(__doc__.strip().splitlines()[3].strip())
+            return 2
+        return check_urls(args[1:])
     online = "--offline" not in args
     args = [a for a in args if a != "--offline"]
     pdf = None

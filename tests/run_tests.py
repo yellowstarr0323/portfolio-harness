@@ -309,6 +309,17 @@ def export_tests(tmp: Path) -> None:
     c, o = run([str(SCRIPTS / "export.py"), str(np_ / "out" / "index.html"), "a4", str(np_ / "out" / "x.pdf")])
     check("export source=reference인데 reference 없음 → 레퍼런스 모드 안 켬, 디자인 검사 실패", c, o, 1,
           ("레퍼런스 모드 안 켬", "style.reference가 비어 있다", "data-layout이 없다"), ("내용만 검사한다",))
+    # 링크 결과는 .export.json의 links에 남는다 — 끝 보고가 이 목록을 옮긴다(build 6-3)
+    lp = tmp / "linkmark"
+    shutil.copytree(out, lp / "out", ignore=shutil.ignore_patterns("*.pdf", "*.html"))
+    (lp / "out" / "index.html").write_text(portfolio_html(links="dead", link_base=lbase), encoding="utf-8")
+    run([str(SCRIPTS / "export.py"), str(lp / "out" / "index.html"), "a4", str(lp / "out" / "portfolio.pdf")])
+    try:
+        lm = json.loads((lp / "out" / ".export.json").read_text(encoding="utf-8")).get("links") or {}
+    except (OSError, ValueError):
+        lm = {}
+    results.append(("export 링크 실패를 .export.json links.fails에 남김 (끝 보고용)",
+                    any("404" in f for f in lm.get("fails", [])) and isinstance(lm.get("warnings"), list), str(lm)[:200]))
     lsrv.shutdown()
     lsrv.server_close()
 
@@ -1038,6 +1049,30 @@ def link_tests(tmp: Path) -> None:
     bad.write_bytes(b"%PDF-1.4\n<< /S /URI /URI (https://github.com/hong) >>\n%%EOF")
     c, o = run([lc, str(f), "--pdf", str(bad), "--offline"])
     check("link_check PDF에 링크가 빠짐 → 실패", c, o, 1, ("PDF에서 눌러도 안 열린다", "velog.io"), ())
+    # --url: 사용자가 링크를 준 그 턴에 접속만 확인(interview)
+    c, o = run([lc, "--url", f"{base}/ok", f"{base}/gone"])
+    check("link_check --url 열림·404를 주소별로 알림 → 실패", c, o, 1, ("열림: ", "실패: ", "/gone", "404"), ())
+    c, o = run([lc, "--url", f"{base}/ok"])
+    check("link_check --url 모두 열림 → 통과", c, o, 0, ("링크 접속 확인: 통과",), ())
+    c, o = run([lc, "--url"])
+    check("link_check --url 주소 없음 → 사용법 오류", c, o, 2, ("--url",), ())
+    # GitHub 404는 "없거나 비공개" — 비공개 저장소를 없는 페이지로 알리지 않게(네트워크 없이 urlopen을 바꿔 확인)
+    import importlib.util
+    import urllib.error
+    spec = importlib.util.spec_from_file_location("link_check_mod", lc)
+    lmod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(lmod)
+    def fake_404(req, timeout=None):
+        raise urllib.error.HTTPError(req.full_url, 404, "Not Found", {}, None)
+    real = lmod.urllib.request.urlopen
+    lmod.urllib.request.urlopen = fake_404
+    try:
+        gh = lmod.probe("https://github.com/hong/private-repo")
+        other = lmod.probe("https://example.com/gone")
+    finally:
+        lmod.urllib.request.urlopen = real
+    results.append(("link_check GitHub 404 → 실패 + 비공개 저장소일 수 있다고 알림", gh[0] == "fail" and "비공개" in gh[1], gh[1]))
+    results.append(("link_check GitHub 아닌 404 → '없는 페이지' 그대로", other[0] == "fail" and "비공개" not in other[1], other[1]))
     srv.shutdown()
     srv.server_close()
 

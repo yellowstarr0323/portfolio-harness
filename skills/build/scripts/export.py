@@ -388,8 +388,13 @@ def main(html_path: str, fmt: str, pdf_out: str) -> int:
     # 검사 결과를 PDF 옆에 남긴다 — 턴 끝 전송 훅(hooks/upload_on_stop.py)은 통과한 PDF만 보낸다(D-FLOW-8)
     if pdf.exists():
         import hashlib
+        # 링크 실패·확인 필요는 끝 보고에 빠짐없이 옮긴다(build 6-3) — 보고할 목록을 모델 기억이 아니라 여기서 읽는다
+        lines = link.stdout.splitlines()
+        links = {"fails": [l[4:] for l in lines if l.startswith("실패: ")],
+                 "warnings": [l[4:] for l in lines if l.startswith("경고: ")]}
         (pdf.parent / ".export.json").write_text(json.dumps(
-            {"pdf": pdf.name, "sha256": hashlib.sha256(pdf.read_bytes()).hexdigest(), "ok": ok}), encoding="utf-8")
+            {"pdf": pdf.name, "sha256": hashlib.sha256(pdf.read_bytes()).hexdigest(), "ok": ok, "links": links},
+            ensure_ascii=False), encoding="utf-8")
 
     print(f"\n{'통과' if ok else '실패'}: {pdf}")
     return 0 if ok else 1
