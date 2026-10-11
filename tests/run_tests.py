@@ -4,7 +4,7 @@
 사용법: python3 tests/run_tests.py          전체 (headless Chrome·poppler 필요)
         python3 tests/run_tests.py --fast   make_pdf 제외 (문서 구조만)
 
-검사 대상: 스킬 문서 구조(frontmatter, 진입점, 참조 경로), 면접관 에이전트(agents/portfolio-reviewer.md), make_pdf.py(통과·넘침·깨진 이미지·PNG), scripts/test_env.py
+검사 대상: 스킬 문서 구조(frontmatter, 진입점, 참조 경로), 면접관 에이전트(agents/portfolio-reviewer.md), make_pdf.py(통과·넘침·깨진 이미지·PNG), upload.py·send_on_done.py(Discord 자동 전송), scripts/test_env.py
 """
 import json
 import os
@@ -43,8 +43,14 @@ def docs_tests() -> None:
         if p.parent.name != "start":
             # 진입점은 start 하나 — 다른 스킬이 사용자 요청으로 직접 시작하면 이전 기록 확인·레퍼런스 질문이 빠진다
             results.append((f"{p.parent.name}: 사용자 트리거 문구 없음(start가 부름)", "start 스킬이 부른다" in m.group(2), m.group(2)[:80]))
-    for script in ("make_pdf.py", "measure.js"):
+    hooks = json.loads((ROOT / "hooks" / "hooks.json").read_text(encoding="utf-8")).get("hooks", {})
+    results.append(("hooks.json: Stop 훅이 send_on_done.py", "send_on_done.py" in json.dumps(hooks.get("Stop", [])), ""))
+    for script in ("make_pdf.py", "measure.js", "upload.py"):
         results.append((f"build/scripts/{script} 있음", (ROOT / "skills" / "build" / "scripts" / script).is_file(), ""))
+    interview = (ROOT / "skills" / "interview" / "SKILL.md").read_text(encoding="utf-8")
+    cats = ["프론트엔드", "백엔드", "DevOps", "앱", "임베디드", "AI", "풀스택", "게임"]
+    line = next((l for l in interview.splitlines() if l.startswith("직무 분야:")), "")
+    results.append(("interview: 직무 분야 선택지 8개", all(c in line for c in cats), line))
     agent = ROOT / "agents" / "portfolio-reviewer.md"
     at = agent.read_text(encoding="utf-8") if agent.exists() else ""
     am = re.match(r"---\nname: (\S+)\ndescription: .+?\ntools: (.+?)\n---\n", at, re.S)
@@ -98,6 +104,83 @@ def make_pdf_tests(tmp: Path) -> None:
     check("make_pdf 없는 파일 → 사용법 오류", code, out, 2, ("사용법",), ())
 
 
+def webhook_server():
+    """가짜 Discord 웹훅: /hook → 204, 받은 본문을 모은다. (서버, 기본 주소, 받은 목록)"""
+    import threading
+    from http.server import BaseHTTPRequestHandler, HTTPServer
+    got: list[bytes] = []
+
+    class H(BaseHTTPRequestHandler):
+        def log_message(self, *a):
+            pass
+
+        def do_POST(self):
+            body = self.rfile.read(int(self.headers.get("Content-Length", 0)))
+            ok = self.path.startswith("/hook")
+            if ok:
+                got.append(body)
+            self.send_response(204 if ok else 404)
+            self.end_headers()
+
+    srv = HTTPServer(("127.0.0.1", 0), H)
+    threading.Thread(target=srv.serve_forever, daemon=True).start()
+    return srv, f"http://127.0.0.1:{srv.server_port}", got
+
+
+def send_tests(tmp: Path) -> None:
+    """upload.py와 턴 끝 훅 send_on_done.py — 리뷰가 끝난 최종 PDF만, 한 번만, 조용히 보낸다."""
+    import time
+    up = ROOT / "skills" / "build" / "scripts" / "upload.py"
+    hook = ROOT / "hooks" / "send_on_done.py"
+    srv, base, got = webhook_server()
+    cfg = tmp / "upload.json"
+    cfg.write_text(json.dumps({"discord_webhook": f"{base}/hook"}), encoding="utf-8")
+    work = tmp / "work"
+    pf = work / "portfolio"
+    (pf / "out").mkdir(parents=True)
+    (pf / "review").mkdir()
+    (pf / "profile.md").write_text("# 프로필\n- 이름: 김전송 (출처: 사용자)\n", encoding="utf-8")
+    pdf = pf / "out" / "portfolio.pdf"
+    pdf.write_bytes(b"%PDF-1.4 final")
+    env = {"HARNESS_UPLOAD_CONFIG": str(cfg), "CLAUDE_PROJECT_DIR": ""}
+
+    def fire(cwd: Path) -> int:
+        p = subprocess.run([sys.executable, str(hook)], input=json.dumps({"hook_event_name": "Stop", "cwd": str(cwd)}),
+                           capture_output=True, text=True, timeout=120, env={**os.environ, **env})
+        return p.returncode
+
+    code, out = run([str(up), str(pdf), "--config", str(tmp / "없음.json")])
+    check("upload 설정 없음 → 건너뜀(0)", code, out, 0, ("설정 없음",), ())
+    (pf / "state.md").write_text("- stage: build\n", encoding="utf-8")
+    fire(work)
+    results.append(("hook stage가 done이 아니면 안 보냄", len(got) == 0, f"보낸 수 {len(got)}"))
+    (pf / "state.md").write_text("- stage: done\n- loop: done\n", encoding="utf-8")
+    fire(work)
+    results.append(("hook 리뷰 파일이 없으면 안 보냄", len(got) == 0, f"보낸 수 {len(got)}"))
+    review = pf / "review" / "portfolio-reviewer-1.md"
+    review.write_text("# 면접관 평가", encoding="utf-8")
+    os.utime(review, (time.time() - 100, time.time() - 100))
+    fire(work)
+    results.append(("hook 리뷰가 PDF보다 먼저면(리뷰 뒤 PDF를 다시 만듦) 안 보냄", len(got) == 0, f"보낸 수 {len(got)}"))
+    os.utime(review, None)
+    code = fire(pf / "out")      # 모델이 cd portfolio/out 을 해서 cwd가 하위 폴더인 경우(10-11 E2E)
+    sent = len(got) == 1 and "김전송.pdf".encode() in got[0]
+    results.append(("hook cwd가 portfolio/ 하위여도 작업 폴더를 찾아 최종 PDF를 보냄(이름.pdf)", code == 0 and sent, f"code {code}, 보낸 수 {len(got)}"))
+    fire(work)
+    results.append(("hook 같은 PDF는 다시 안 보냄", len(got) == 1, f"보낸 수 {len(got)}"))
+    log = (pf / "out" / ".upload.log")
+    results.append(("hook 결과는 .upload.log에만 남김", log.exists() and "보냄" in log.read_text(encoding="utf-8"), ""))
+    p = subprocess.run([sys.executable, str(hook)], input="JSON 아님", capture_output=True, text=True, timeout=60)
+    results.append(("hook 입력이 깨져도 종료 0", p.returncode == 0, f"code {p.returncode}"))
+    bad = tmp / "bad.json"
+    bad.write_text(json.dumps({"discord_webhook": f"{base}/deleted"}), encoding="utf-8")
+    pdf.write_bytes(b"%PDF-1.4 changed")
+    code, out = run([str(up), str(pdf), "--config", str(bad)])
+    check("upload 웹훅 404 → 실패 표시, URL은 출력 안 함", code, out, 1, ("전송 실패", "404"), (base,))
+    srv.shutdown()
+    srv.server_close()
+
+
 def test_env_tests(tmp: Path) -> None:
     """scripts/test_env.py — 백업·되돌리기가 바꾼 것만 다루는지(가짜 ~/.claude로)."""
     claude = tmp / "fake-claude"
@@ -125,6 +208,7 @@ def main() -> int:
         tmp = Path(t)
         docs_tests()
         test_env_tests(tmp)
+        send_tests(tmp)
         if not fast:
             make_pdf_tests(tmp)
     fails = [r for r in results if not r[1]]

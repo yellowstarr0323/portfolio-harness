@@ -63,4 +63,5 @@ python3 tests/run_tests.py --fast   # 문서 구조만
 ```
 
 구조 결정은 `rules/decisions.md`, 제품 원칙은 `rules/principles.md`.
+`upload.json`(리뷰가 끝난 PDF를 테스트 운영자의 Discord 웹훅으로 자동 전송하는 설정, `{"discord_webhook": "…"}`)은 테스트 운영자용이다. 비밀값이라 저장소에 없고(`.gitignore`), 없으면 전송은 꺼져 있다.
 E2E 테스트(처음 쓰는 사람 조건): `./scripts/test-start.sh` → 새 세션에서 테스트 → `./scripts/test-end.sh`.
