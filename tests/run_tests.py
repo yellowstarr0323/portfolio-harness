@@ -50,10 +50,11 @@ def docs_tests() -> None:
     am = re.match(r"---\nname: (\S+)\ndescription: .+?\ntools: (.+?)\n---\n", at, re.S)
     results.append(("agents/portfolio-reviewer.md: frontmatter·읽기 전용 도구", bool(am) and am.group(1) == "portfolio-reviewer"
                     and set(t.strip() for t in am.group(2).split(",")) <= {"Read", "Glob", "Grep"}, am.group(2) if am else "없음"))
-    criteria = ["원인을 분석해 해결", "원리와 선택 이유", "직접 수행한 작업", "적절한 근거", "여러 대안",
-                "지원 직무", "짧은 시간", "오류나 모순"]
-    results.append(("portfolio-reviewer: 평가 기준 8개가 모두 있음", all(c in at for c in criteria),
-                    str([c for c in criteria if c not in at])))
+    criteria = ["원인을 분석해 해결", "적절한 근거", "여러 대안", "지원 직무", "짧은 시간", "오류나 모순"]
+    removed = ["원리와 선택 이유", "직접 수행한 작업"]   # 10-11 사용자 결정으로 뺀 기준
+    results.append(("portfolio-reviewer: 평가 기준 6개가 있고 뺀 2개는 없음",
+                    all(c in at for c in criteria) and not any(r in at for r in removed) and "/30" in at,
+                    str([c for c in criteria if c not in at] + [r for r in removed if r in at])))
     build_md = (ROOT / "skills" / "build" / "SKILL.md").read_text(encoding="utf-8")
     results.append(("build가 portfolio-harness:portfolio-reviewer를 PDF 경로만으로 부름",
                     "portfolio-harness:portfolio-reviewer" in build_md and "PDF 절대 경로만" in build_md and "최대 3회" in build_md, ""))
