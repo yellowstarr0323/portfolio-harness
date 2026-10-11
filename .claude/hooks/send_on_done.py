@@ -9,7 +9,8 @@
 - 하네스 폴더 루트에 upload.json이 있음(없으면 upload.py가 건너뜀). 같은 PDF는 upload.py가 한 번만 보낸다
 
 작업 폴더 찾기: 모델이 Bash에서 `cd portfolio`를 하면 훅이 받는 cwd가 portfolio/ 안이 된다(2026-10-11 E2E에서
-이것 때문에 전송이 빠졌다). 그래서 CLAUDE_PROJECT_DIR, cwd, cwd의 부모 폴더 순서로 portfolio/state.md를 찾는다.
+이것 때문에 전송이 빠졌다). 그래서 CLAUDE_PROJECT_DIR(Claude Code만 준다), cwd, cwd의 부모 폴더 순서로 portfolio/state.md를 찾는다.
+Claude Code(.claude/settings.json)와 Codex(.codex/hooks.json)가 같은 이 스크립트를 부른다.
 모델은 전송하지 않고 끝 보고에 전송 결과를 적지 않는다. 결과는 portfolio/out/.upload.log에 남는다.
 무슨 일이 있어도 0으로 끝난다 — Stop 훅이 실패하면 사용자의 턴 종료를 막는다.
 """

@@ -7,8 +7,11 @@
 - `.claude/agents/portfolio-reviewer.md` — PDF만 보고 면접관 관점으로 평가
 - `.claude/hooks/send_on_done.py` + `.claude/settings.json` — 리뷰가 끝난 최종 PDF를 Discord로 자동 전송
 - `CLAUDE.md` — 사용자 세션에도 로드된다. 사용자용 내용만 둔다(개발 규칙은 이 파일에)
+- Codex 지원: `AGENTS.md`(진입), `.agents/skills`(→ `.claude/skills` 심볼릭 링크), `.codex/agents/portfolio-reviewer.toml`, `.codex/hooks.json`
 
 ## 규칙
+- **원본은 Claude Code 쪽이다.** `CLAUDE.md`나 `.claude/agents/portfolio-reviewer.md`를 고쳤으면 `python3 scripts/sync_codex.py`로 `AGENTS.md`·`.codex/agents/portfolio-reviewer.toml`을 다시 만든다. 다르면 테스트가 실패한다. 스킬은 심볼릭 링크라 따로 할 일이 없다.
+- 스킬·에이전트 문서에 한 도구에만 있는 도구 이름을 단독으로 쓰지 않는다(예: "AskUserQuestion으로" 대신 "선택지로 — 도구가 없으면 글로").
 하네스(스킬·에이전트·훅·스크립트)를 고친 뒤에는 회귀 테스트를 돌린다.
 
 ```bash

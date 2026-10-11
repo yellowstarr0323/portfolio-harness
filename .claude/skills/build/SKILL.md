@@ -42,7 +42,7 @@ python3 <이 스킬 디렉터리>/scripts/make_pdf.py portfolio/out/index.html p
 `portfolio/review/loop.md`에 회차와 사용자가 그대로 두기로 한 지적(거절 목록)을 남긴다. `state.md`에는 `loop: <회차>/3`.
 
 **한 회차:**
-1. **리뷰**: Agent 도구로 `portfolio-reviewer`를 부른다. 프롬프트에는 **PDF 절대 경로만** 넣는다. 인터뷰 내용, 기록, 의도, 앞 회차 결과, 거절 목록을 넘기지 않는다(면접관처럼 PDF만 보고 판단해야 한다). 결과를 `portfolio/review/portfolio-reviewer-<회차>.md`에 그대로 저장한다.
+1. **리뷰**: `portfolio-reviewer` 서브에이전트를 띄운다(Claude Code는 Agent 도구, Codex는 같은 이름의 custom agent). 프롬프트에는 **PDF 절대 경로만** 넣는다. 인터뷰 내용, 기록, 의도, 앞 회차 결과, 거절 목록을 넘기지 않는다(면접관처럼 PDF만 보고 판단해야 한다). 결과를 `portfolio/review/portfolio-reviewer-<회차>.md`에 그대로 저장한다.
 2. **인용 확인**: 지적이 인용한 문장이 PDF에 실제로 있는지 `pdftotext`로 확인한다. 없는 인용의 지적은 버린다.
 3. **거절 걸러내기**: 거절 목록과 같은 지적(같은 기준, 같은 내용)은 버린다. 사용자에게 다시 보여주지 않는다.
 4. **끝 조건**: 남은 지적이 0개면 loop를 끝낸다("면접에서 물어볼 질문"은 세지 않는다).

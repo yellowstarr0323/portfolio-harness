@@ -1,6 +1,6 @@
 # portfolio-harness
 
-개발 직군 학생을 위한 **취업용 포트폴리오 제작 도구**입니다. [Claude Code](https://claude.com/claude-code)에서 동작합니다.
+개발 직군 학생을 위한 **취업용 포트폴리오 제작 도구**입니다. [Claude Code](https://claude.com/claude-code)와 Codex CLI에서 동작합니다(Codex는 아직 실제 실행 검증 전).
 
 Claude가 인터뷰하듯 질문하면 답만 하시면 됩니다. 답한 내용과 주신 자료(GitHub, Notion, velog 등)로 A4 PDF 포트폴리오를 만들고, 채용 면접관 관점에서 검토해 같이 고쳐 나갑니다.
 
@@ -52,6 +52,16 @@ claude
 - **반드시 이 폴더 안에서 `claude`를 실행하세요.** 다른 폴더에서 실행하면 하네스가 켜지지 않고 일반 Claude로 동작합니다.
 - 켜졌는지 확인: 입력창에 `/`를 치면 `start`, `interview`, `design`, `build`가 보여야 합니다.
 - 업데이트: `git pull`
+
+### Codex로 쓸 때
+```bash
+cd portfolio-harness
+codex
+```
+- 처음 실행하면 이 폴더(`.codex/`)를 신뢰할지 묻습니다. 신뢰를 고르세요.
+- `/hooks`를 입력해 PDF 자동 전송 훅을 검토하고 승인하세요. Codex는 훅마다 승인해야 실행하고, 훅 파일이 바뀌면 다시 승인해야 합니다.
+- 켜졌는지 확인: `/skills`에 `start`, `interview`, `design`, `build`가 보여야 합니다.
+- Codex 샌드박스 설정에 따라 링크 읽기·PDF 만들기가 막힐 수 있습니다(아직 확인 전). 막히면 해당 명령을 허용해 주세요.
 
 ## 사용법
 
@@ -109,7 +119,12 @@ PDF 경로, 리뷰 점수 변화, 남은 지적, 면접에서 나올 만한 질�
 │  └─ build/       HTML → PDF(scripts/make_pdf.py), 리뷰·수정 반복
 ├─ agents/portfolio-reviewer.md   PDF만 보고 면접관 관점 평가
 ├─ hooks/send_on_done.py          리뷰가 끝난 최종 PDF 자동 전송(테스트 운영용)
-└─ settings.json
+└─ settings.json                   Claude Code 훅 설정
+.agents/skills → ../.claude/skills  Codex용(심볼릭 링크, 같은 스킬)
+.codex/
+├─ agents/portfolio-reviewer.toml   Codex용 리뷰어(scripts/sync_codex.py가 만든다)
+└─ hooks.json                       Codex 훅 설정(같은 send_on_done.py)
+CLAUDE.md / AGENTS.md               진입 지시문(AGENTS.md는 sync_codex.py가 CLAUDE.md에서 만든다)
 ```
 
 ```bash

@@ -41,7 +41,7 @@ description: 포트폴리오 디자인 단계. 레퍼런스가 있으면 레퍼�
 3. 시안마다 **실제 내용으로 1쪽과 첫 프로젝트 쪽**을 `portfolio/design/<시안>/preview.html`에 만들고 PNG로 렌더한다:
    `python3 <이 스킬 디렉터리>/../build/scripts/make_pdf.py portfolio/design/<시안>/preview.html --png portfolio/design/<시안>/preview.png`
    PNG를 직접 열어 글자가 잘리거나 겹치지 않는지 확인하고, 깨진 시안은 고친다.
-4. AskUserQuestion으로 고르게 한다. 선택지마다 이름·이유·미리보기 PNG 경로를 적는다. "직접 말할게요"(Other)로 조합 요청을 받으면 반영해서 다시 보여준다.
+4. 선택지로 고르게 한다(선택지 질문 도구가 없으면 글로). 선택지마다 이름·이유·미리보기 PNG 경로를 적는다. "직접 말할게요"(Other)로 조합 요청을 받으면 반영해서 다시 보여준다.
 5. 고른 시안을 `portfolio/design.md`에 남긴다(색 값, 글꼴, 글자 크기, 배치, 미리보기 경로).
 
 ## 공통 원칙

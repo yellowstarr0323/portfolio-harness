@@ -4,7 +4,7 @@
 사용법: python3 tests/run_tests.py          전체 (headless Chrome·poppler 필요)
         python3 tests/run_tests.py --fast   make_pdf 제외 (문서 구조만)
 
-검사 대상: 스킬 문서 구조(frontmatter, 진입점, 참조 경로), 면접관 에이전트(agents/portfolio-reviewer.md), make_pdf.py(통과·넘침·깨진 이미지·PNG), upload.py·send_on_done.py(Discord 자동 전송), check_images.py(프로젝트 필수 이미지), scripts/test_env.py
+검사 대상: 스킬 문서 구조(frontmatter, 진입점, 참조 경로), 면접관 에이전트(agents/portfolio-reviewer.md), make_pdf.py(통과·넘침·깨진 이미지·PNG), upload.py·send_on_done.py(Discord 자동 전송), check_images.py(프로젝트 필수 이미지), scripts/test_env.py, Codex 설정(AGENTS.md·.agents/skills·.codex/)
 """
 import json
 import os
@@ -48,6 +48,22 @@ def docs_tests() -> None:
     results.append((".claude/settings.json: Stop 훅이 $CLAUDE_PROJECT_DIR/.claude/hooks/send_on_done.py",
                     "$CLAUDE_PROJECT_DIR/.claude/hooks/send_on_done.py" in json.dumps(hooks.get("Stop", [])), ""))
     results.append(("플러그인 파일 없음(폴더 방식)", not (ROOT / ".claude-plugin").exists(), ""))
+    # Codex 지원: 스킬은 심볼릭 링크로 공유, AGENTS.md·리뷰어 toml은 sync_codex.py가 원본에서 만든다
+    link = ROOT / ".agents" / "skills"
+    results.append(("Codex: .agents/skills가 .claude/skills를 가리키는 심볼릭 링크", link.is_symlink() and link.resolve() == (CL / "skills").resolve(), ""))
+    code, out = run([str(ROOT / "scripts" / "sync_codex.py"), "--check"])
+    check("Codex: AGENTS.md·portfolio-reviewer.toml이 원본(CLAUDE.md·agents md)과 같음", code, out, 0, ("원본과 같음",), ())
+    import tomllib
+    toml = tomllib.loads((ROOT / ".codex" / "agents" / "portfolio-reviewer.toml").read_text(encoding="utf-8"))
+    results.append(("Codex 리뷰어: TOML이 읽히고 읽기 전용", toml.get("name") == "portfolio-reviewer" and toml.get("sandbox_mode") == "read-only"
+                    and "6가지 기준" in toml.get("description", "") and "[질문]" in toml.get("developer_instructions", ""), ""))
+    chooks = json.loads((ROOT / ".codex" / "hooks.json").read_text(encoding="utf-8")).get("hooks", {})
+    results.append(("Codex: .codex/hooks.json Stop 훅이 같은 send_on_done.py", ".claude/hooks/send_on_done.py" in json.dumps(chooks.get("Stop", [])), ""))
+    agents_md = (ROOT / "AGENTS.md").read_text(encoding="utf-8")
+    results.append(("AGENTS.md: @import 대신 원칙 문서를 읽으라고 지시", "@rules/" not in agents_md and "rules/principles.md" in agents_md, ""))
+    skill_texts = "\n".join(p.read_text(encoding="utf-8") for p in skills)
+    results.append(("스킬이 특정 도구 이름에만 기대지 않음(AskUserQuestion은 '없으면 글로'와 함께)",
+                    "Agent 도구로" not in skill_texts and ("AskUserQuestion" not in skill_texts or "없으면 글로" in skill_texts), ""))
     for script in ("make_pdf.py", "measure.js", "upload.py"):
         results.append((f"build/scripts/{script} 있음", (CL / "skills" / "build" / "scripts" / script).is_file(), ""))
     interview = (CL / "skills" / "interview" / "SKILL.md").read_text(encoding="utf-8")
