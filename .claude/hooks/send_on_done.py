@@ -6,7 +6,7 @@
 - portfolio/out/portfolio.pdf가 있음
 - portfolio/review/portfolio-reviewer-*.md 중 가장 최근 파일이 PDF보다 나중에 저장됨
   — 리뷰어가 이 PDF를 평가한 뒤라는 뜻이다. 끝난 뒤 PDF를 다시 만들었으면 리뷰를 다시 할 때까지 보내지 않는다
-- 플러그인 루트에 upload.json이 있음(없으면 upload.py가 건너뜀). 같은 PDF는 upload.py가 한 번만 보낸다
+- 하네스 폴더 루트에 upload.json이 있음(없으면 upload.py가 건너뜀). 같은 PDF는 upload.py가 한 번만 보낸다
 
 작업 폴더 찾기: 모델이 Bash에서 `cd portfolio`를 하면 훅이 받는 cwd가 portfolio/ 안이 된다(2026-10-11 E2E에서
 이것 때문에 전송이 빠졌다). 그래서 CLAUDE_PROJECT_DIR, cwd, cwd의 부모 폴더 순서로 portfolio/state.md를 찾는다.

@@ -15,7 +15,8 @@ import tempfile
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-MAKE_PDF = ROOT / "skills" / "build" / "scripts" / "make_pdf.py"
+CL = ROOT / ".claude"
+MAKE_PDF = CL / "skills" / "build" / "scripts" / "make_pdf.py"
 results: list[tuple[str, bool, str]] = []
 
 
@@ -31,7 +32,7 @@ def check(name: str, code: int, out: str, want: int, has: tuple = (), lacks: tup
 
 
 def docs_tests() -> None:
-    skills = sorted((ROOT / "skills").glob("*/SKILL.md"))
+    skills = sorted((CL / "skills").glob("*/SKILL.md"))
     names = {p.parent.name for p in skills}
     results.append(("스킬 4개(start·interview·design·build)", names == {"start", "interview", "design", "build"}, str(names)))
     for p in skills:
@@ -39,21 +40,23 @@ def docs_tests() -> None:
         m = re.match(r"---\nname: (\S+)\ndescription: (.+?)\n---\n", text, re.S)
         results.append((f"{p.parent.name}: frontmatter name이 폴더 이름과 같음", bool(m) and m.group(1) == p.parent.name, ""))
         results.append((f"{p.parent.name}: 원칙 문서 경로가 실제로 있음",
-                        "../../rules/principles.md" in text and (p.parent / "../../rules/principles.md").resolve().is_file(), ""))
+                        "../../../rules/principles.md" in text and (p.parent / "../../../rules/principles.md").resolve().is_file(), ""))
         if p.parent.name != "start":
             # 진입점은 start 하나 — 다른 스킬이 사용자 요청으로 직접 시작하면 이전 기록 확인·레퍼런스 질문이 빠진다
             results.append((f"{p.parent.name}: 사용자 트리거 문구 없음(start가 부름)", "start 스킬이 부른다" in m.group(2), m.group(2)[:80]))
-    hooks = json.loads((ROOT / "hooks" / "hooks.json").read_text(encoding="utf-8")).get("hooks", {})
-    results.append(("hooks.json: Stop 훅이 send_on_done.py", "send_on_done.py" in json.dumps(hooks.get("Stop", [])), ""))
+    hooks = json.loads((CL / "settings.json").read_text(encoding="utf-8")).get("hooks", {})
+    results.append((".claude/settings.json: Stop 훅이 $CLAUDE_PROJECT_DIR/.claude/hooks/send_on_done.py",
+                    "$CLAUDE_PROJECT_DIR/.claude/hooks/send_on_done.py" in json.dumps(hooks.get("Stop", [])), ""))
+    results.append(("플러그인 파일 없음(폴더 방식)", not (ROOT / ".claude-plugin").exists(), ""))
     for script in ("make_pdf.py", "measure.js", "upload.py"):
-        results.append((f"build/scripts/{script} 있음", (ROOT / "skills" / "build" / "scripts" / script).is_file(), ""))
-    interview = (ROOT / "skills" / "interview" / "SKILL.md").read_text(encoding="utf-8")
+        results.append((f"build/scripts/{script} 있음", (CL / "skills" / "build" / "scripts" / script).is_file(), ""))
+    interview = (CL / "skills" / "interview" / "SKILL.md").read_text(encoding="utf-8")
     cats = ["프론트엔드", "백엔드", "DevOps", "앱", "임베디드", "AI", "풀스택", "게임"]
     line = next((l for l in interview.splitlines() if l.startswith("직무 분야:")), "")
     results.append(("interview: 직무 분야 선택지 8개", all(c in line for c in cats), line))
     results.append(("interview: 로고 1장 + 화면 1장 이상 필수, check_images로 확인",
                     "로고 1장 + 프로젝트 화면" in interview and "check_images.py" in interview, ""))
-    agent = ROOT / "agents" / "portfolio-reviewer.md"
+    agent = CL / "agents" / "portfolio-reviewer.md"
     at = agent.read_text(encoding="utf-8") if agent.exists() else ""
     am = re.match(r"---\nname: (\S+)\ndescription: .+?\ntools: (.+?)\n---\n", at, re.S)
     results.append(("agents/portfolio-reviewer.md: frontmatter·읽기 전용 도구", bool(am) and am.group(1) == "portfolio-reviewer"
@@ -63,15 +66,16 @@ def docs_tests() -> None:
     results.append(("portfolio-reviewer: 평가 기준 6개가 있고 뺀 2개는 없음",
                     all(c in at for c in criteria) and not any(r in at for r in removed) and "/30" in at,
                     str([c for c in criteria if c not in at] + [r for r in removed if r in at])))
-    build_md = (ROOT / "skills" / "build" / "SKILL.md").read_text(encoding="utf-8")
-    results.append(("build가 portfolio-harness:portfolio-reviewer를 PDF 경로만으로 부름",
-                    "portfolio-harness:portfolio-reviewer" in build_md and "PDF 절대 경로만" in build_md and "최대 3회" in build_md, ""))
+    build_md = (CL / "skills" / "build" / "SKILL.md").read_text(encoding="utf-8")
+    results.append(("build가 portfolio-reviewer를 PDF 경로만으로 부름",
+                    "`portfolio-reviewer`" in build_md and "PDF 절대 경로만" in build_md and "최대 3회" in build_md, ""))
     results.append(("portfolio-reviewer: 지적마다 [수정]/[질문] 종류, 없으면 '없음'", "[수정]" in at and "[질문]" in at and "`없음`" in at, ""))
     loop_rules = ("남은 지적이 0개면 loop를 끝낸다", "거절 목록", "[수정] 지적", "[질문] 지적", "앞 회차 결과, 거절 목록을 넘기지 않는다")
     results.append(("build loop: 최대 3회·지적 0개면 끝·거절 걸러내기·리뷰어에 앞 회차를 안 넘김",
                     all(r in build_md for r in loop_rules), str([r for r in loop_rules if r not in build_md])))
     claude_md = (ROOT / "CLAUDE.md").read_text(encoding="utf-8")
-    results.append(("CLAUDE.md가 원칙 문서를 @import", "@rules/principles.md" in claude_md, ""))
+    results.append(("CLAUDE.md가 원칙 문서를 @import하고 start 스킬로 안내", "@rules/principles.md" in claude_md and "start 스킬" in claude_md, ""))
+    results.append(("CLAUDE.md에 개발 규칙이 섞이지 않음(사용자 세션에도 로드됨)", "run_tests" not in claude_md and (ROOT / "DEVELOPMENT.md").is_file(), ""))
 
 
 def page(body: str) -> str:
@@ -132,8 +136,8 @@ def webhook_server():
 def send_tests(tmp: Path) -> None:
     """upload.py와 턴 끝 훅 send_on_done.py — 리뷰가 끝난 최종 PDF만, 한 번만, 조용히 보낸다."""
     import time
-    up = ROOT / "skills" / "build" / "scripts" / "upload.py"
-    hook = ROOT / "hooks" / "send_on_done.py"
+    up = CL / "skills" / "build" / "scripts" / "upload.py"
+    hook = CL / "hooks" / "send_on_done.py"
     srv, base, got = webhook_server()
     cfg = tmp / "upload.json"
     cfg.write_text(json.dumps({"discord_webhook": f"{base}/hook"}), encoding="utf-8")
@@ -185,7 +189,7 @@ def send_tests(tmp: Path) -> None:
 
 def image_tests(tmp: Path) -> None:
     """check_images.py — 프로젝트마다 로고 1장 + 화면 1장 이상(필수)."""
-    ci = ROOT / "skills" / "interview" / "scripts" / "check_images.py"
+    ci = CL / "skills" / "interview" / "scripts" / "check_images.py"
     pf = tmp / "imgpf"
     (pf / "projects").mkdir(parents=True)
     for slug in ("dms", "zipkr"):

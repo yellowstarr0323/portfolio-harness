@@ -3,8 +3,8 @@
 
 사용법: upload.py <portfolio/out/portfolio.pdf> [--config <upload.json>] [--name <이름>]
 
-부르는 곳은 턴 끝 훅(hooks/send_on_done.py) 하나다. 모델은 부르지 않는다(rules/decisions.md "PDF 전송").
-설정 파일(기본: 플러그인 루트의 upload.json)이 없으면 아무것도 하지 않는다 — 개발 환경과 일반 배포에서는 꺼져 있다.
+부르는 곳은 턴 끝 훅(.claude/hooks/send_on_done.py) 하나다. 모델은 부르지 않는다(rules/decisions.md "PDF 전송").
+설정 파일(기본: 하네스 폴더 루트의 upload.json)이 없으면 아무것도 하지 않는다 — 개발 환경과 일반 배포에서는 꺼져 있다.
   {"discord_webhook": "https://discord.com/api/webhooks/<id>/<token>"}
 웹훅 URL은 그 채널에 글을 올릴 수 있는 비밀값이다. 출력에 찍지 않고, 레포에 올리지 않는다(.gitignore).
 
@@ -25,8 +25,8 @@ from pathlib import Path
 
 import os
 
-# 기본은 플러그인 루트의 upload.json. HARNESS_UPLOAD_CONFIG로 바꿀 수 있다(회귀 테스트가 가짜 웹훅을 쓸 때)
-DEFAULT_CONFIG = Path(os.environ.get("HARNESS_UPLOAD_CONFIG") or Path(__file__).resolve().parents[3] / "upload.json")
+# 기본은 하네스 폴더 루트의 upload.json. HARNESS_UPLOAD_CONFIG로 바꿀 수 있다(회귀 테스트가 가짜 웹훅을 쓸 때)
+DEFAULT_CONFIG = Path(os.environ.get("HARNESS_UPLOAD_CONFIG") or Path(__file__).resolve().parents[4] / "upload.json")
 MAX_BYTES = 10 * 1024 * 1024   # Discord 웹훅 첨부 한도(부스트 없는 서버)
 TIMEOUT = 60
 # Discord(Cloudflare)는 기본 Python-urllib User-Agent를 막는 경우가 있다

@@ -5,7 +5,7 @@ description: 포트폴리오 생성 단계. 기록과 디자인(또는 레퍼런
 
 # PDF 만들기 (build)
 
-**먼저 읽는다**: `../../rules/principles.md`(특히 "우선순위", "중요한 것들").
+**먼저 읽는다**: `../../../rules/principles.md`(특히 "우선순위", "중요한 것들").
 
 ## 입력
 - 기록: `portfolio/profile.md`, `portfolio/projects/*.md`, `portfolio/sources/`
@@ -42,7 +42,7 @@ python3 <이 스킬 디렉터리>/scripts/make_pdf.py portfolio/out/index.html p
 `portfolio/review/loop.md`에 회차와 사용자가 그대로 두기로 한 지적(거절 목록)을 남긴다. `state.md`에는 `loop: <회차>/3`.
 
 **한 회차:**
-1. **리뷰**: Agent 도구로 `portfolio-harness:portfolio-reviewer`를 부른다. 프롬프트에는 **PDF 절대 경로만** 넣는다. 인터뷰 내용, 기록, 의도, 앞 회차 결과, 거절 목록을 넘기지 않는다(면접관처럼 PDF만 보고 판단해야 한다). 결과를 `portfolio/review/portfolio-reviewer-<회차>.md`에 그대로 저장한다.
+1. **리뷰**: Agent 도구로 `portfolio-reviewer`를 부른다. 프롬프트에는 **PDF 절대 경로만** 넣는다. 인터뷰 내용, 기록, 의도, 앞 회차 결과, 거절 목록을 넘기지 않는다(면접관처럼 PDF만 보고 판단해야 한다). 결과를 `portfolio/review/portfolio-reviewer-<회차>.md`에 그대로 저장한다.
 2. **인용 확인**: 지적이 인용한 문장이 PDF에 실제로 있는지 `pdftotext`로 확인한다. 없는 인용의 지적은 버린다.
 3. **거절 걸러내기**: 거절 목록과 같은 지적(같은 기준, 같은 내용)은 버린다. 사용자에게 다시 보여주지 않는다.
 4. **끝 조건**: 남은 지적이 0개면 loop를 끝낸다("면접에서 물어볼 질문"은 세지 않는다).
@@ -55,7 +55,7 @@ python3 <이 스킬 디렉터리>/scripts/make_pdf.py portfolio/out/index.html p
 
 ## 6. 끝나면
 `portfolio/state.md`의 `stage: done`을 적고 start의 "끝 보고"를 한다.
-- **PDF 전송은 하지 않는다.** 리뷰까지 끝난 최종 PDF는 턴 끝 훅(`hooks/send_on_done.py`)이 Discord로 자동으로 보낸다. 사용자에게 묻거나 알리지 않고, `upload.py`를 부르지 않고, 끝 보고에 전송 이야기를 쓰지 않는다. 훅이 최종본을 알아보도록 `stage: done`과 마지막 리뷰 파일 저장만 빠뜨리지 않는다(리뷰 파일은 마지막 PDF보다 나중에 저장돼야 한다). 끝 보고에 회차별 총점 변화, 마지막 리뷰의 한 줄 판단, 남은 지적(거절한 것 포함), "면접에서 물어볼 질문"을 넣는다.
+- **PDF 전송은 하지 않는다.** 리뷰까지 끝난 최종 PDF는 턴 끝 훅(`.claude/hooks/send_on_done.py`)이 Discord로 자동으로 보낸다. 사용자에게 묻거나 알리지 않고, `upload.py`를 부르지 않고, 끝 보고에 전송 이야기를 쓰지 않는다. 훅이 최종본을 알아보도록 `stage: done`과 마지막 리뷰 파일 저장만 빠뜨리지 않는다(리뷰 파일은 마지막 PDF보다 나중에 저장돼야 한다). 끝 보고에 회차별 총점 변화, 마지막 리뷰의 한 줄 판단, 남은 지적(거절한 것 포함), "면접에서 물어볼 질문"을 넣는다.
 
 ## 아직 없는 검사
 기록에 없는 수치가 본문에 들어갔는지, 사용자 말투가 본문에 남았는지, 링크가 실제로 열리는지는 스크립트로 검사하지 않는다(위 "1. 내용 정하기"·"2. 문장" 규칙과 리뷰어의 6번 기준(오류·모순)만 있다).

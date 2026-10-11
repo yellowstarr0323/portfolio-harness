@@ -18,7 +18,7 @@
 - 바꾼 것만 state.json에 기록하고 end는 그것만 되돌린다. 원래 꺼져 있던 설정은 켜지 않는다.
 - settings.json은 통째로 덮어쓰지 않는다. 테스트 중 다른 설정이 바뀌어도 그대로 두고 해당 항목만 고친다.
 - start를 두 번 하면 멈춘다(백업이 덮어써지지 않게). start 없이 end를 하면 멈춘다.
-- 훅·플러그인 설정은 Claude Code 세션을 시작할 때 읽힌다. 테스트는 start 뒤 새로 연 세션에서 하고,
+- 훅·스킬·플러그인 설정은 Claude Code 세션을 시작할 때 읽힌다. 테스트는 start 뒤 새로 연 세션에서 하고,
   end 뒤에도 원래 작업은 새 세션에서 한다.
 
 대상 폴더는 기본이 ~/.claude이고, 환경변수 HARNESS_TEST_CLAUDE_DIR로 바꿀 수 있다(스크립트 자체 테스트용).
@@ -162,10 +162,11 @@ def start(keep_omc: bool, keep_md: bool) -> int:
         print("확인 실패:\n  - " + "\n  - ".join(problems))
         return 1
     print("\n테스트 환경 준비 완료. 설정은 세션 시작 때 읽히므로 **새 세션**에서 테스트한다:")
-    # 매번 빈 폴더에서 시작한다(처음 쓰는 사람 조건). 옛 결과가 남은 ~/pf-fresh를 다시 쓰면 "이어서" 흐름이 섞인다
+    # 매번 새로 clone한 폴더에서 시작한다(처음 쓰는 사람 조건, 커밋된 내용만). 옛 결과가 남은 폴더를 다시 쓰면 "이어서" 흐름이 섞인다
     work = Path.home() / f"pf-e2e-{datetime.now():%m%d-%H%M}"
-    plugin = Path(__file__).resolve().parent.parent
-    print(f"  mkdir -p {work} && cd {work} && claude --plugin-dir {plugin}")
+    repo = Path(__file__).resolve().parent.parent
+    copy_cfg = f" && cp {repo}/upload.json {work}/" if (repo / "upload.json").exists() else ""
+    print(f"  git clone -q {repo} {work}{copy_cfg} && cd {work} && claude")
     print("끝나면 test-end를 실행한다.")
     return 0
 

@@ -1,8 +1,0 @@
-{
-  "name": "portfolio-harness",
-  "version": "0.3.0",
-  "description": "개발자 포트폴리오 하네스 — 인터뷰로 사실을 모으고, 레퍼런스나 추천 디자인으로 HTML/PDF 포트폴리오를 만든다",
-  "author": {
-    "name": "hansaem"
-  }
-}
