@@ -905,7 +905,7 @@ def upload_tests(tmp: Path) -> None:
     c, o = run([up, str(pdf), "--config", str(bad)])
     check("upload 웹훅 없음(404) → 실패 표시(작업은 계속), URL은 안 찍힘", c, o, 1, ("전송 실패", "404"), (base,))
 
-    # 턴 끝 훅(hooks/upload_on_stop.py): 모델이 upload.py를 잊어도 검사를 통과한 새 PDF는 간다
+    # 턴 끝 훅(hooks/upload_on_stop.py): 전송은 이 훅만 한다(U-13). 검사·감사를 통과한 최종 PDF만 간다
     import hashlib
     import os
     hook = ROOT / "hooks" / "upload_on_stop.py"
@@ -974,16 +974,22 @@ def upload_tests(tmp: Path) -> None:
     mark(True)
     code = fire(ev)
     results.append(("hook 감사 전 중간본(.build.json audit 없음)은 안 보냄 (최종본만)", code == 0 and len(got) == n0, f"보낸 수 {len(got) - n0}"))
-    (hout / "index.html").write_text("<html>감사 후</html>", encoding="utf-8")
-    build_mark = {"indexSha256": hashlib.sha256((hout / "index.html").read_bytes()).hexdigest(), "audit": "audit-1.md"}
-    (hout / ".build.json").write_text(json.dumps(build_mark), encoding="utf-8")
-    (hout / "index.html").write_text("<html>감사 뒤 리뷰로 다시 고침</html>", encoding="utf-8")
+    # 감사 표시는 mark_audit.py가 쓴다(U-13) — 감사한 글자 해시. 배치·색만 바뀌면 최종본, 글자가 바뀌면 아님
+    mark_audit = ROOT / "skills" / "audit" / "scripts" / "mark_audit.py"
+    (hout / "index.html").write_text('<html><body><p class="a">상벌점 조회 1,225ms → 241ms</p></body></html>', encoding="utf-8")
+    c, o = run([str(mark_audit), str(hout / "index.html"), "audit-1.md"])
+    bj = json.loads((hout / ".build.json").read_text(encoding="utf-8"))
+    results.append(("mark_audit 감사 표시(audit·auditTextSha256·indexSha256)를 씀", c == 0 and bj.get("audit") == "audit-1.md"
+                    and bj.get("auditTextSha256") and bj.get("indexSha256") == hashlib.sha256((hout / "index.html").read_bytes()).hexdigest(), o))
+    c, o = run([str(mark_audit), str(hout / "index.html")])
+    results.append(("mark_audit 인자 부족 → 사용법 오류(2)", c == 2, o))
+    (hout / "index.html").write_text('<html><body><p class="a">상벌점 조회 1,225ms → 300ms</p></body></html>', encoding="utf-8")
     code = fire(ev)
-    results.append(("hook 감사 뒤 HTML이 바뀐 PDF는 안 보냄 (최종본만)", code == 0 and len(got) == n0, f"보낸 수 {len(got) - n0}"))
-    (hout / "index.html").write_text("<html>감사 후</html>", encoding="utf-8")
+    results.append(("hook 감사 뒤 문장이 바뀐 PDF는 안 보냄 (최종본만)", code == 0 and len(got) == n0, f"보낸 수 {len(got) - n0}"))
+    (hout / "index.html").write_text('<html><head><style>.a{color:red}</style></head><body>\n  <div class="wrap"><p class="b">상벌점 조회 1,225ms → 241ms</p></div></body></html>', encoding="utf-8")
     code = fire(ev)
     sent_ok = code == 0 and len(got) == n0 + 1 and "김훅.pdf".encode() in got[-1]
-    results.append(("hook 감사까지 끝난 최종 PDF는 보냄(이름.pdf)", sent_ok, f"code {code}, 보낸 수 {len(got) - n0}"))
+    results.append(("hook 감사 뒤 배치·색만 바꾼 최종 PDF는 보냄(이름.pdf, U-13)", sent_ok, f"code {code}, 보낸 수 {len(got) - n0}"))
     code = fire(ev)
     results.append(("hook 같은 PDF는 다음 턴에 다시 안 보냄", code == 0 and len(got) == n0 + 1, f"보낸 수 {len(got) - n0}"))
     code = fire("이건 JSON이 아님")

@@ -78,8 +78,12 @@ sources: <절대경로>/portfolio/sources/   (심층 모드일 때만)
    python3 <B>/check_numbers.py portfolio/out/index.html portfolio/facts
    python3 <B>/export.py portfolio/out/index.html <design.json의 format> portfolio/out/portfolio.pdf
    ```
-3. 통과하면 `out/.build.json`의 `indexSha256`를 새 해시로 갱신하고 `"audit": "<report 파일명>"`을 추가한다. **고친 문장이 없어도 감사를 끝냈으면 `audit`을 적는다** — 턴 끝 전송 훅이 이 표시로 최종본을 알아본다(D-FLOW-8). 그래야 다음 build가 감사로 고친 내용을 사용자의 수동 편집으로 오인하지 않는다.
-4. audit를 단독으로 불렀으면 보고 전에 `python3 <B>/upload.py portfolio/out/portfolio.pdf`를 돌리고 출력 한 줄을 보고 끝에 옮긴다(build "PDF 전송", D-FLOW-8). `start` 흐름 안이면 돌리지 않는다 — 감사 뒤 build 검증·리뷰를 다시 돌 수 있어 start가 끝에서 한 번 보낸다. 설정이 없거나 같은 PDF면 알아서 건너뛴다.
+3. 통과하면 감사 표시를 남긴다. **고친 문장이 없어도 감사를 끝냈으면 남긴다** — 턴 끝 전송 훅이 이 표시로 최종본을 알아보고 보낸다(D-FLOW-8, U-13). 해시는 손으로 적지 않는다.
+   ```bash
+   python3 <이 스킬 디렉터리>/scripts/mark_audit.py portfolio/out/index.html <report 파일명>
+   ```
+   `.build.json`에 `audit`·`auditTextSha256`(감사한 글자)·`indexSha256`이 들어간다. 그래야 다음 build가 감사로 고친 내용을 사용자의 수동 편집으로 오인하지 않는다.
+4. PDF 전송은 하지 않는다(U-13) — `upload.py`를 부르지 않고 보고에 전송 결과를 적지 않는다. 감사 뒤 배치·색만 바꾼 PDF도 훅이 최종본으로 보내고, 문장을 바꿨으면 바뀐 블록을 다시 감사하고 3을 다시 한다.
 5. 감사로 고친 문장의 이유는 **report에 남는다.** 다음 build가 같은 문장을 다시 원래대로 쓰지 않게, 수정 사항 중 facts로 옮길 수 있는 것(예: 인과를 명시하지 않는다는 사실, 측정 조건)은 facts에 반영한다. 이유가 문서에 남지 않으면 며칠 뒤 같은 표현이 되돌아온다.
 
 ## 하지 않는 것

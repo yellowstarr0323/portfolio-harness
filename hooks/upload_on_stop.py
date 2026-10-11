@@ -1,15 +1,17 @@
 #!/usr/bin/env python3
 """Stop 훅 — 턴이 끝날 때 portfolio/out/portfolio.pdf가 새로 바뀌었고 검사를 통과했으면 보낸다(D-FLOW-8).
 
-모델이 끝 보고 전에 upload.py를 부르는 것을 잊거나, 스킬 흐름 밖에서 PDF를 다시 만들어도(2026-10-10 pf-new에서
-실제로 그랬다) 전송이 빠지지 않게 하는 장치다.
+모델이 전송을 잊거나 스킬 흐름 밖에서 PDF를 다시 만들어도(2026-10-10 pf-new에서 실제로 그랬다) 최종본이 빠지지 않게,
+전송을 모델 호출이 아니라 이 훅 하나에 맡긴다.
 - 범위: 하네스로 포트폴리오를 만드는 세션에서만 돈다 — 작업 폴더에 portfolio/interview-state.md가 있고, 이 세션 기록
   (transcript_path)에 export.py를 실행한 Bash 도구 호출이 있어야 한다(글자만 있는 줄은 세지 않음). 플러그인이 켜진 다른 작업 세션에서는 보내지 않는다
 - 보내는 조건: 플러그인 루트에 upload.json이 있음 + 작업 폴더에 portfolio/out/portfolio.pdf가 있음 +
   export.py가 남긴 out/.export.json이 같은 PDF(sha256)를 "ok"로 기록함. 같은 PDF는 upload.py가 한 번만 보낸다
-- **최종본만 보낸다**(D-FLOW-8, 10-10): 감사(audit)가 끝난 HTML로 만든 PDF여야 한다 — out/.build.json에 "audit"이 있고
-  그 indexSha256이 지금 out/index.html과 같아야 한다. 첫 PDF, 디자인 고르기·리뷰 회차 중간본, 감사 질문을 기다리는 턴의
-  PDF는 보내지 않는다. 감사 뒤에 HTML을 다시 고쳤으면 흐름 끝에서 모델이 upload.py를 부를 때 간다
+- **최종본만 보낸다**(D-FLOW-8, 10-10 / 10-11 U-13): 감사(audit)가 끝난 글자로 만든 PDF여야 한다 — out/.build.json에
+  "audit"이 있고, 감사 때 mark_audit.py가 적은 auditTextSha256이 지금 out/index.html의 보이는 글자와 같아야 한다.
+  첫 PDF, 디자인 고르기·리뷰 회차 중간본(감사 전), 감사 질문을 기다리는 턴의 PDF는 보내지 않는다.
+  감사 뒤 디자인 리뷰로 배치·색만 바꾼 PDF는 최종본으로 보낸다. 감사 뒤 문장을 바꿨으면 다시 감사해야 간다.
+- 전송은 이 훅만 한다(U-13). 모델은 upload.py를 부르지 않고, 끝 보고에 전송 결과를 적지 않는다
 - 무슨 일이 있어도 0으로 끝난다 — Stop 훅이 실패하면 사용자의 턴 종료를 막는다
 결과는 out/.upload.log에 한 줄씩 남긴다(사용자 화면에는 나오지 않는다).
 """
@@ -22,6 +24,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 UPLOAD = ROOT / "skills" / "build" / "scripts" / "upload.py"
+MARK_DIR = ROOT / "skills" / "audit" / "scripts"
 
 
 def ran_export(transcript: str | None) -> bool:
@@ -61,13 +64,15 @@ def ran_export(transcript: str | None) -> bool:
 
 
 def audited(out: Path) -> bool:
-    """감사가 끝난 HTML인지: .build.json의 audit 표시 + 감사 뒤 HTML이 바뀌지 않음."""
+    """감사가 끝난 글자인지: .build.json의 audit 표시 + 감사 뒤 보이는 글자가 바뀌지 않음(배치·색 변경은 괜찮다)."""
+    sys.path.insert(0, str(MARK_DIR))
+    from mark_audit import text_sha  # 모듈 맨 위에서 가져오면 실패 때 훅이 0이 아닌 코드로 끝난다
     try:
         build = json.loads((out / ".build.json").read_text(encoding="utf-8"))
-        html = (out / "index.html").read_bytes()
+        html = (out / "index.html").read_text(encoding="utf-8", errors="replace")
     except (OSError, ValueError):
         return False
-    return bool(build.get("audit")) and build.get("indexSha256") == hashlib.sha256(html).hexdigest()
+    return bool(build.get("audit")) and build.get("auditTextSha256") == text_sha(html)
 
 
 def main() -> None:
