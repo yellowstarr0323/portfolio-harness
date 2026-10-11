@@ -1,7 +1,0 @@
-/* 전체 스타일: editorial — 굵은 제목과 검은 가는 선. 머리 띠 없음, 1쪽 머리·프로젝트 첫머리 아래를 검은 선으로 닫는다 */
-:root [data-role="name"] { letter-spacing: -0.02em; }
-:root [data-role="profile-head"] { border-bottom: 1px solid var(--text); padding-bottom: var(--space-6); margin-bottom: var(--space-6); }
-:root .project-head { border-bottom: 1px solid var(--text); padding-bottom: var(--space-5); margin-bottom: var(--space-5); }
-:root [data-role="tagline"] { color: var(--text); }
-:root [data-role="section-title"] { letter-spacing: -0.01em; }
-:root [data-role="page-title"]::after { display: none; }

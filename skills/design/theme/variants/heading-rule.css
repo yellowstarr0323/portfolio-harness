@@ -1,5 +1,0 @@
-/* 제목 모양: rule — 섹션 제목 위에 굵은 가로선, 쪽 제목 아래 강조색 짧은 선 */
-:root [data-role="section-title"] { border-top: 2px solid var(--text); padding-top: var(--space-2); }
-:root [data-role="page-title"]::after {
-  content: ""; display: block; width: 32px; height: 3px; margin-top: var(--space-2); background: var(--accent);
-}
