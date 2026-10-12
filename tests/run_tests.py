@@ -161,6 +161,42 @@ def url_to_pdf_tests(tmp: Path) -> None:
     results.append(("url_to_pdf 실패: PDF 파일이 없음", not bad_pdf.exists(), ""))
     code, out = run([str(URL_TO_PDF), "notion 주소", str(bad_pdf)])
     check("url_to_pdf http(s) 주소가 아님 → 사용법 오류", code, out, 2, ("사용법",), ())
+    # Notion 앱 주소: 공개면 notion.site 주소로 바꾸고, 비공개면 인쇄하지 않는다(네트워크 없이 가짜 응답으로)
+    import importlib.util
+    spec = importlib.util.spec_from_file_location("url_to_pdf", URL_TO_PDF)
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    app = "https://app.notion.com/p/3815faa7b030807aad94f0b415b5fe07"
+    site = "https://ws.notion.site/3815faa7b030807aad94f0b415b5fe07"
+    err = {"isNotionError": True, "name": "MemcachedCrossCellError"}
+    public = {"publicAccessRole": "reader", "requireLogin": False, "requireInterstitial": site}
+    seen: list[tuple[str, str]] = []
+
+    def fake(answers):
+        it = iter(answers)
+        return lambda host, pid: (seen.append((host, pid)), next(it, err))[1]
+
+    target, _ = mod.resolve_notion(app, fake([public]), wait=0)
+    results.append(("url_to_pdf Notion 공개 → notion.site 주소로 바꿈(id를 uuid로)",
+                    target == site and seen[0][1] == "3815faa7-b030-807a-ad94-f0b415b5fe07", f"{target} {seen[:1]}"))
+    target, _ = mod.resolve_notion("https://www.notion.so/제목-3815faa7b030807aad94f0b415b5fe07?pvs=4", fake([err, err, public]), wait=0)
+    results.append(("url_to_pdf Notion API가 cross-cell 500을 섞어 줘도 다시 물어 공개 주소를 얻음", target == site, str(target)))
+    target, note = mod.resolve_notion(app, fake([{"publicAccessRole": "none", "requireLogin": True}]), wait=0)
+    results.append(("url_to_pdf Notion 비공개 → 인쇄 안 함", target is None and "공개되어 있지 않다" in note, note))
+    target, note = mod.resolve_notion(app, fake([]), wait=0)
+    results.append(("url_to_pdf Notion API가 끝내 답하지 않으면 원래 주소로", target == app and "확인하지 못해" in note, note))
+    target, note = mod.resolve_notion("https://example.com/portfolio", fake([]), wait=0)
+    results.append(("url_to_pdf Notion이 아닌 주소는 그대로", target == "https://example.com/portfolio" and note == "", note))
+    # Chrome이 로딩을 못 끝내 시간 초과 → 트레이스백 없이 실패(10-12 Notion 앱 주소에서 실제로 났다)
+    import contextlib
+    import io
+
+    def hang(args):
+        raise subprocess.TimeoutExpired("chrome", 120)
+    mod.chrome, buf = hang, io.StringIO()
+    with contextlib.redirect_stdout(buf):
+        code = mod.main([f"{base}/ok.html", str(bad_pdf)])
+    check("url_to_pdf Chrome 시간 초과 → 실패 메시지(1), PDF 없음", code, buf.getvalue(), 1, ("PDF 출력 실패", "120초"), ())
     srv.shutdown()
     srv.server_close()
 

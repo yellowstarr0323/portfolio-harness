@@ -47,6 +47,8 @@ description: 포트폴리오 하네스 진입점. 기존 포트폴리오 확인(
 - PDF 파일: `portfolio/existing/portfolio.pdf`로 복사한다.
 - URL: `python3 <이 스킬 디렉터리>/scripts/url_to_pdf.py <URL> portfolio/existing/portfolio.pdf`
   - `글이 거의 없다`·`PDF 출력 실패`면 그 턴에 알린다: "`<주소>`는 <이유>로 열리지 않아 읽지 못했어요. 공개 설정을 확인하시거나 PDF로 내보내서 보내 주세요." 열지 못한 포트폴리오를 리뷰하지 않는다.
+  - `공개되어 있지 않다`(Notion)면: "Notion 페이지가 비공개라 읽지 못했어요. 오른쪽 위 공유 → 웹에 게시를 켜고 다시 보내 주시거나, PDF로 내보내서 보내 주세요."
+  - Notion 앱 주소(notion.so·app.notion.com)는 스크립트가 알아서 공개 주소(notion.site)로 바꿔 인쇄한다. 사용자에게 주소를 바꿔 달라고 하지 않는다.
 - 받은 PDF의 모든 쪽을 직접 열어(Read, 10쪽이 넘으면 나눠서) 포트폴리오가 맞는지 본다(로그인 안내·다른 문서면 위처럼 알린다).
 - 글을 뽑아 둔다: `pdftotext -layout portfolio/existing/portfolio.pdf portfolio/sources/existing-portfolio.md` 후 첫 줄에 `출처: <받은 경로나 URL>`을 넣는다.
 
