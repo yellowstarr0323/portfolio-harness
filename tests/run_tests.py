@@ -87,7 +87,12 @@ def docs_tests() -> None:
                     "`portfolio-reviewer`" in build_md and "PDF 절대 경로만" in build_md and "최대 3회" in build_md, ""))
     results.append(("portfolio-reviewer: 지적마다 [수정]/[질문] 종류, 없으면 '없음'", "[수정]" in at and "[질문]" in at and "`없음`" in at, ""))
     results.append(("인용 확인: pdftotext에서 못 찾으면 쪽을 직접 열어 이미지 속 글자까지 보고 버림(build·start)",
-                    "그 쪽을 직접 열어(Read)" in build_md and "이미지 속 글자" in (CL / "skills" / "start" / "SKILL.md").read_text(encoding="utf-8"), ""))
+                    "그 쪽을 직접 열어(Read, 없으면 위 `pdftoppm` PNG)" in build_md and "이미지 속 글자" in (CL / "skills" / "start" / "SKILL.md").read_text(encoding="utf-8"), ""))
+    # Codex에는 PDF 쪽을 이미지로 보는 Read가 없다 — PDF를 눈으로 봐야 하는 곳마다 pdftoppm 대체 경로가 있어야 한다
+    for name in ("start", "build", "design"):
+        md = (CL / "skills" / name / "SKILL.md").read_text(encoding="utf-8")
+        results.append((f"{name}: PDF를 눈으로 보는 곳에 Read 없을 때 pdftoppm 대체 경로", "pdftoppm -png" in md, ""))
+    results.append(("스킬에 'Read로' 단독 지시 없음(Codex 대체 없이)", "Read로" not in skill_texts, ""))
     loop_rules = ("남은 지적이 0개면 loop를 끝낸다", "거절 목록", "[수정] 지적", "[질문] 지적", "앞 회차 결과, 거절 목록을 넘기지 않는다")
     results.append(("build loop: 최대 3회·지적 0개면 끝·거절 걸러내기·리뷰어에 앞 회차를 안 넘김",
                     all(r in build_md for r in loop_rules), str([r for r in loop_rules if r not in build_md])))

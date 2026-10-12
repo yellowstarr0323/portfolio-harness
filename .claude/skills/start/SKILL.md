@@ -52,12 +52,12 @@ description: 포트폴리오 하네스 진입점. 기존 포트폴리오 확인(
 
 ### 받기
 - `portfolio/existing/portfolio.pdf`로 복사한다.
-- 받은 PDF의 모든 쪽을 직접 열어(Read, 10쪽이 넘으면 나눠서) 포트폴리오가 맞는지 본다. 다른 문서거나 빈 쪽뿐이면 그 턴에 알리고 다시 부탁한다.
+- 받은 PDF의 모든 쪽을 직접 열어(10쪽이 넘으면 나눠서) 포트폴리오가 맞는지 본다. PDF를 바로 볼 수 있는 파일 읽기 도구(Claude Code의 Read)가 없으면 `pdftoppm -png -r 100 -f <쪽> -l <쪽> <PDF> <출력 이름>`으로 쪽을 PNG로 만들어 연다(`portfolio/existing/pages/`). 다른 문서거나 빈 쪽뿐이면 그 턴에 알리고 다시 부탁한다.
 - 글을 뽑아 둔다: `pdftotext -layout portfolio/existing/portfolio.pdf portfolio/sources/existing-portfolio.md` 후 첫 줄에 `출처: <받은 파일 경로>`를 넣는다.
 
 ### 리뷰
 build "리뷰와 수정 반복"의 1~2와 같은 방식이다.
-1. `portfolio-reviewer` 서브에이전트를 띄운다. 프롬프트에는 **`portfolio/existing/portfolio.pdf`의 절대 경로만** 넣는다. 사용자가 한 말, 기대, 이 PDF가 기존 포트폴리오라는 사실을 넘기지 않는다. 결과를 `portfolio/review/existing-review.md`에 그대로 저장한다.
+1. `portfolio-reviewer` 서브에이전트를 띄운다(Claude Code는 Agent 도구, Codex는 같은 이름의 custom agent). 프롬프트에는 **`portfolio/existing/portfolio.pdf`의 절대 경로만** 넣는다. 사용자가 한 말, 기대, 이 PDF가 기존 포트폴리오라는 사실을 넘기지 않는다. 결과를 `portfolio/review/existing-review.md`에 그대로 저장한다.
 2. 지적이 인용한 문장이 PDF에 실제로 있는지 build의 "인용 확인"대로 확인한다(`pdftotext`에서 못 찾으면 그 쪽을 직접 열어 이미지 속 글자까지 본다). 눈으로 봐도 없는 인용의 지적만 버린다.
 
 ### 보고
