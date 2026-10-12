@@ -41,21 +41,24 @@ description: 포트폴리오 하네스 진입점. 기존 포트폴리오 확인(
 ## 1. 기존 포트폴리오 질문
 선택지 한 문항: "이미 만들어 둔 포트폴리오가 있나요?"
 - **없어요**: 2로 간다.
-- **있어요**: "PDF 파일 경로나 웹 주소(Notion·개인 사이트 등)를 보내 주세요"라고 받는다. PDF가 아닌 파일(HTML·이미지·docx 등)이면 "PDF로 내보내서 보내 주세요"라고 다시 부탁한다.
+- **있어요**: PDF 파일로만 받는다. 이렇게 안내한다:
+  ```
+  기존 포트폴리오를 PDF 파일로 보내 주세요. 파일을 이 창으로 끌어다 놓거나 경로를 적어 주시면 돼요.
+  - Notion: 페이지 오른쪽 위 ··· → 내보내기 → 형식 PDF
+  - 개인 사이트·블로그: 브라우저에서 Ctrl+P(Mac은 Cmd+P) → 대상 "PDF로 저장"
+  - Google Docs·Word·PPT: 파일 → 다운로드(또는 내보내기) → PDF
+  ```
+  URL이나 PDF가 아닌 파일(HTML·이미지·docx 등)을 주면 열어 보지 말고 위 안내로 PDF를 다시 부탁한다. 웹 페이지는 로그인·봇 확인·렌더링 때문에 자동으로 PDF로 만들면 자주 깨진다(10-12 Notion에서 확인).
 
 ### 받기
-- PDF 파일: `portfolio/existing/portfolio.pdf`로 복사한다.
-- URL: `python3 <이 스킬 디렉터리>/scripts/url_to_pdf.py <URL> portfolio/existing/portfolio.pdf`
-  - `글이 거의 없다`·`PDF 출력 실패`면 그 턴에 알린다: "`<주소>`는 <이유>로 열리지 않아 읽지 못했어요. 공개 설정을 확인하시거나 PDF로 내보내서 보내 주세요." 열지 못한 포트폴리오를 리뷰하지 않는다.
-  - `공개되어 있지 않다`(Notion)면: "Notion 페이지가 비공개라 읽지 못했어요. 오른쪽 위 공유 → 웹에 게시를 켜고 다시 보내 주시거나, PDF로 내보내서 보내 주세요."
-  - Notion 앱 주소(notion.so·app.notion.com)는 스크립트가 알아서 공개 주소(notion.site)로 바꿔 인쇄한다. 사용자에게 주소를 바꿔 달라고 하지 않는다.
-- 받은 PDF의 모든 쪽을 직접 열어(Read, 10쪽이 넘으면 나눠서) 포트폴리오가 맞는지 본다(로그인 안내·다른 문서면 위처럼 알린다).
-- 글을 뽑아 둔다: `pdftotext -layout portfolio/existing/portfolio.pdf portfolio/sources/existing-portfolio.md` 후 첫 줄에 `출처: <받은 경로나 URL>`을 넣는다.
+- `portfolio/existing/portfolio.pdf`로 복사한다.
+- 받은 PDF의 모든 쪽을 직접 열어(Read, 10쪽이 넘으면 나눠서) 포트폴리오가 맞는지 본다. 다른 문서거나 빈 쪽뿐이면 그 턴에 알리고 다시 부탁한다.
+- 글을 뽑아 둔다: `pdftotext -layout portfolio/existing/portfolio.pdf portfolio/sources/existing-portfolio.md` 후 첫 줄에 `출처: <받은 파일 경로>`를 넣는다.
 
 ### 리뷰
 build "리뷰와 수정 반복"의 1~2와 같은 방식이다.
 1. `portfolio-reviewer` 서브에이전트를 띄운다. 프롬프트에는 **`portfolio/existing/portfolio.pdf`의 절대 경로만** 넣는다. 사용자가 한 말, 기대, 이 PDF가 기존 포트폴리오라는 사실을 넘기지 않는다. 결과를 `portfolio/review/existing-review.md`에 그대로 저장한다.
-2. 지적이 인용한 문장이 PDF에 실제로 있는지 `pdftotext`로 확인한다. 없는 인용의 지적은 버린다.
+2. 지적이 인용한 문장이 PDF에 실제로 있는지 build의 "인용 확인"대로 확인한다(`pdftotext`에서 못 찾으면 그 쪽을 직접 열어 이미지 속 글자까지 본다). 눈으로 봐도 없는 인용의 지적만 버린다.
 
 ### 보고
 존댓말로 짧게:
@@ -81,7 +84,7 @@ build "리뷰와 수정 반복"의 1~2와 같은 방식이다.
 
 ```markdown
 - stage: existing | reference | interview | design | build | done
-- existing: 없음 | <경로나 URL> (리뷰: portfolio/review/existing-review.md)
+- existing: 없음 | <받은 파일 경로> (리뷰: portfolio/review/existing-review.md)
 - reference: 없음 | existing | <경로나 URL>
 - interview: profile | project-list | project-detail | follow-up | done
 - loop: 0/3 | 1/3 | 2/3 | 3/3 | done
