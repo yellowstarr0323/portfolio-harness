@@ -165,8 +165,7 @@ def start(keep_omc: bool, keep_md: bool) -> int:
     # 매번 새로 clone한 폴더에서 시작한다(처음 쓰는 사람 조건, 커밋된 내용만). 옛 결과가 남은 폴더를 다시 쓰면 "이어서" 흐름이 섞인다
     work = Path.home() / f"pf-e2e-{datetime.now():%m%d-%H%M}"
     repo = Path(__file__).resolve().parent.parent
-    copy_cfg = f" && cp {repo}/upload.json {work}/" if (repo / "upload.json").exists() else ""
-    print(f"  git clone -q {repo} {work}{copy_cfg} && cd {work} && claude")
+    print(f"  git clone -q {repo} {work} && cd {work} && claude")
     print("끝나면 test-end를 실행한다.")
     return 0
 

@@ -59,7 +59,6 @@ cd portfolio-harness
 codex
 ```
 - 처음 실행하면 이 폴더(`.codex/`)를 신뢰할지 묻습니다. 신뢰를 고르세요.
-- `/hooks`를 입력해 PDF 자동 전송 훅을 검토하고 승인하세요. Codex는 훅마다 승인해야 실행하고, 훅 파일이 바뀌면 다시 승인해야 합니다.
 - 켜졌는지 확인: `/skills`에 `start`, `interview`, `design`, `build`가 보여야 합니다.
 - Codex 샌드박스 설정에 따라 링크 읽기·PDF 만들기가 막힐 수 있습니다(아직 확인 전). 막히면 해당 명령을 허용해 주세요.
 
@@ -125,13 +124,10 @@ PDF 경로, 리뷰 점수 변화, 남은 지적, 면접에서 나올 만한 질�
 │  ├─ interview/   인터뷰, 필수 이미지 확인(scripts/check_images.py)
 │  ├─ design/      레퍼런스 분석 / 디자인 시안 추천
 │  └─ build/       HTML → PDF(scripts/make_pdf.py), 리뷰·수정 반복
-├─ agents/portfolio-reviewer.md   PDF만 보고 면접관 관점 평가
-├─ hooks/send_on_done.py          리뷰가 끝난 최종 PDF 자동 전송(테스트 운영용)
-└─ settings.json                   Claude Code 훅 설정
+└─ agents/portfolio-reviewer.md   PDF만 보고 면접관 관점 평가
 .agents/skills → ../.claude/skills  Codex용(심볼릭 링크, 같은 스킬)
 .codex/
-├─ agents/portfolio-reviewer.toml   Codex용 리뷰어(scripts/sync_codex.py가 만든다)
-└─ hooks.json                       Codex 훅 설정(같은 send_on_done.py)
+└─ agents/portfolio-reviewer.toml   Codex용 리뷰어(scripts/sync_codex.py가 만든다)
 CLAUDE.md / AGENTS.md               진입 지시문(AGENTS.md는 sync_codex.py가 CLAUDE.md에서 만든다)
 ```
 
@@ -140,4 +136,3 @@ python3 tests/run_tests.py          # 전체 (Chrome·poppler 필요)
 python3 tests/run_tests.py --fast   # make_pdf 제외
 ```
 
-`upload.json`(리뷰가 끝난 PDF를 테스트 운영자의 Discord 웹훅으로 자동 전송하는 설정, `{"discord_webhook": "…"}`)은 테스트 운영자용입니다. 비밀값이라 저장소에 없고(`.gitignore`), 없으면 전송은 꺼져 있습니다. 쓰려면 이 폴더 루트에 둡니다.
