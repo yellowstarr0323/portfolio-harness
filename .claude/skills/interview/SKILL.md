@@ -11,6 +11,12 @@ description: 포트폴리오 인터뷰 단계. 개인 정보 → 프로젝트 �
 
 `portfolio/reference.md`가 있으면(레퍼런스 있음) 아래 템플릿 대신 **reference.md의 "인터뷰에서 받을 항목"**으로 같은 순서(개인 정보 → 프로젝트 목록 → 프로젝트 상세)의 템플릿을 만든다. 레퍼런스에 없는 항목은 묻지 않는다.
 
+## 기존 포트폴리오에서 가져오기
+`portfolio/sources/existing-portfolio.md`가 있으면(사용자가 기존 포트폴리오를 줬음) 이미 적힌 것을 다시 묻지 않는다.
+- 1~3의 템플릿을 보내기 전에 기존 포트폴리오에서 칸을 채워 둔다. 채운 템플릿을 보여주고 "틀린 곳은 고치고, 빈 칸만 채워 주세요"라고 받는다. 기록에는 `(출처: existing-portfolio.md)`를 붙인다. 사용자가 고친 값은 `(출처: 사용자)`로 바꾼다.
+- 이미지: `pdfimages -png portfolio/existing/portfolio.pdf portfolio/sources/existing-img/img`로 뽑아 Read로 본다. 어느 프로젝트의 로고·화면인지 분명한 것만 `portfolio/images/<슬러그>/`에 넣고, 넣은 것을 템플릿에 한 줄씩 적어 맞는지 확인받는다. 분명하지 않으면 쓰지 않고 3처럼 부탁한다.
+- 4(이해될 때까지 묻기)에 `portfolio/review/existing-review.md`의 "확인이 필요한 것"(`[질문]` 지적)을 같이 넣는다. 이미 답을 받은 것은 뺀다.
+
 ## 1. 개인 정보 (1턴)
 
 ```

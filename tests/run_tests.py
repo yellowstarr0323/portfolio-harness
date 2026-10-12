@@ -2,9 +2,9 @@
 """하네스 회귀 테스트.
 
 사용법: python3 tests/run_tests.py          전체 (headless Chrome·poppler 필요)
-        python3 tests/run_tests.py --fast   make_pdf 제외 (문서 구조만)
+        python3 tests/run_tests.py --fast   make_pdf·url_to_pdf 제외 (문서 구조만)
 
-검사 대상: 스킬 문서 구조(frontmatter, 진입점, 참조 경로), 면접관 에이전트(agents/portfolio-reviewer.md), make_pdf.py(통과·넘침·깨진 이미지·PNG), upload.py·send_on_done.py(Discord 자동 전송), check_images.py(프로젝트 필수 이미지), scripts/test_env.py, Codex 설정(AGENTS.md·.agents/skills·.codex/)
+검사 대상: 스킬 문서 구조(frontmatter, 진입점, 참조 경로), 면접관 에이전트(agents/portfolio-reviewer.md), make_pdf.py(통과·넘침·깨진 이미지·PNG), url_to_pdf.py(기존 포트폴리오 URL→PDF), upload.py·send_on_done.py(Discord 자동 전송), check_images.py(프로젝트 필수 이미지), scripts/test_env.py, Codex 설정(AGENTS.md·.agents/skills·.codex/)
 """
 import json
 import os
@@ -17,6 +17,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 CL = ROOT / ".claude"
 MAKE_PDF = CL / "skills" / "build" / "scripts" / "make_pdf.py"
+URL_TO_PDF = CL / "skills" / "start" / "scripts" / "url_to_pdf.py"
 results: list[tuple[str, bool, str]] = []
 
 
@@ -89,6 +90,14 @@ def docs_tests() -> None:
     loop_rules = ("남은 지적이 0개면 loop를 끝낸다", "거절 목록", "[수정] 지적", "[질문] 지적", "앞 회차 결과, 거절 목록을 넘기지 않는다")
     results.append(("build loop: 최대 3회·지적 0개면 끝·거절 걸러내기·리뷰어에 앞 회차를 안 넘김",
                     all(r in build_md for r in loop_rules), str([r for r in loop_rules if r not in build_md])))
+    start_md = (CL / "skills" / "start" / "SKILL.md").read_text(encoding="utf-8")
+    existing_rules = ("이미 만들어 둔 포트폴리오가 있나요?", "url_to_pdf.py", "절대 경로만", "existing-review.md", "여기서 끝")
+    results.append(("start: 기존 포트폴리오 질문 → 리뷰어에 PDF 경로만 → 리뷰 후 선택",
+                    all(r in start_md for r in existing_rules) and start_md.index("기존 포트폴리오 질문") < start_md.index("## 2. 레퍼런스 질문"),
+                    str([r for r in existing_rules if r not in start_md])))
+    results.append(("start/scripts/url_to_pdf.py 있음", URL_TO_PDF.is_file(), ""))
+    results.append(("interview: 기존 포트폴리오 내용으로 템플릿을 채우고 리뷰 질문을 같이 물음",
+                    "existing-portfolio.md" in interview and "existing-review.md" in interview, ""))
     claude_md = (ROOT / "CLAUDE.md").read_text(encoding="utf-8")
     results.append(("CLAUDE.md가 원칙 문서를 @import하고 start 스킬로 안내", "@rules/principles.md" in claude_md and "start 스킬" in claude_md, ""))
     results.append(("CLAUDE.md에 개발 규칙이 섞이지 않음(사용자 세션에도 로드됨)", "run_tests" not in claude_md and (ROOT / "DEVELOPMENT.md").is_file(), ""))
@@ -124,6 +133,36 @@ def make_pdf_tests(tmp: Path) -> None:
     results.append(("make_pdf --png 시안 미리보기가 두 쪽 높이로 찍힘", code == 0 and height > 2000, f"code {code}, 높이 {height}\n{out}"))
     code, out = run([str(MAKE_PDF), str(tmp / "없음.html"), str(tmp / "x.pdf")])
     check("make_pdf 없는 파일 → 사용법 오류", code, out, 2, ("사용법",), ())
+
+
+def url_to_pdf_tests(tmp: Path) -> None:
+    """기존 포트폴리오 URL → PDF. 글이 거의 없으면(로그인·비공개·빈 페이지) PDF를 남기지 않는다."""
+    import threading
+    from functools import partial
+    from http.server import HTTPServer, SimpleHTTPRequestHandler
+    site = tmp / "site"
+    site.mkdir()
+    (site / "ok.html").write_text("<!doctype html><meta charset='utf-8'><body>" + "<p>주문 API 응답 시간을 줄인 과정</p>" * 30, encoding="utf-8")
+    (site / "login.html").write_text("<!doctype html><meta charset='utf-8'><body>로그인하세요", encoding="utf-8")
+
+    class Quiet(SimpleHTTPRequestHandler):
+        def log_message(self, *a):
+            pass
+
+    srv = HTTPServer(("127.0.0.1", 0), partial(Quiet, directory=str(site)))
+    threading.Thread(target=srv.serve_forever, daemon=True).start()
+    base = f"http://127.0.0.1:{srv.server_address[1]}"
+    ok_pdf, bad_pdf = tmp / "u-ok.pdf", tmp / "u-bad.pdf"
+    code, out = run([str(URL_TO_PDF), f"{base}/ok.html", str(ok_pdf)])
+    check("url_to_pdf 글이 있는 페이지 → PDF 통과", code, out, 0, ("통과",), ())
+    results.append(("url_to_pdf 통과: PDF 파일이 있음", ok_pdf.exists(), ""))
+    code, out = run([str(URL_TO_PDF), f"{base}/login.html", str(bad_pdf)])
+    check("url_to_pdf 글이 거의 없는 페이지(로그인 등) → 실패", code, out, 1, ("글이 거의 없다",), ())
+    results.append(("url_to_pdf 실패: PDF 파일이 없음", not bad_pdf.exists(), ""))
+    code, out = run([str(URL_TO_PDF), "notion 주소", str(bad_pdf)])
+    check("url_to_pdf http(s) 주소가 아님 → 사용법 오류", code, out, 2, ("사용법",), ())
+    srv.shutdown()
+    srv.server_close()
 
 
 def webhook_server():
@@ -192,6 +231,15 @@ def send_tests(tmp: Path) -> None:
     results.append(("hook 같은 PDF는 다시 안 보냄", len(got) == 1, f"보낸 수 {len(got)}"))
     log = (pf / "out" / ".upload.log")
     results.append(("hook 결과는 .upload.log에만 남김", log.exists() and "보냄" in log.read_text(encoding="utf-8"), ""))
+    # 기존 포트폴리오 리뷰(existing-review.md)는 최종본 리뷰가 아니다 — 리뷰만 하고 끝낸 경우 보내지 않는다
+    ex = tmp / "work-existing" / "portfolio"
+    (ex / "existing").mkdir(parents=True)
+    (ex / "review").mkdir()
+    (ex / "existing" / "portfolio.pdf").write_bytes(b"%PDF-1.4 old")
+    (ex / "review" / "existing-review.md").write_text("# 면접관 평가", encoding="utf-8")
+    (ex / "state.md").write_text("- stage: done\n", encoding="utf-8")
+    fire(ex.parent)
+    results.append(("hook 기존 포트폴리오 리뷰만 있으면 안 보냄", len(got) == 1, f"보낸 수 {len(got)}"))
     p = subprocess.run([sys.executable, str(hook)], input="JSON 아님", capture_output=True, text=True, timeout=60)
     results.append(("hook 입력이 깨져도 종료 0", p.returncode == 0, f"code {p.returncode}"))
     bad = tmp / "bad.json"
@@ -268,6 +316,7 @@ def main() -> int:
         image_tests(tmp)
         if not fast:
             make_pdf_tests(tmp)
+            url_to_pdf_tests(tmp)
     fails = [r for r in results if not r[1]]
     for name, ok, detail in results:
         print(f"{'PASS' if ok else 'FAIL'}  {name}")

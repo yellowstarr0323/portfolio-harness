@@ -3,7 +3,7 @@
 제품 원칙은 `rules/principles.md`, 하네스 구조 결정은 `rules/decisions.md`가 원본이다. 여기에 다시 쓰지 않는다.
 
 ## 구조
-- `.claude/skills/` — start(진입점) · interview · design · build
+- `.claude/skills/` — start(진입점, 기존 포트폴리오 리뷰 포함) · interview · design · build
 - `.claude/agents/portfolio-reviewer.md` — PDF만 보고 면접관 관점으로 평가
 - `.claude/hooks/send_on_done.py` + `.claude/settings.json` — 리뷰가 끝난 최종 PDF를 Discord로 자동 전송
 - `CLAUDE.md` — 사용자 세션에도 로드된다. 사용자용 내용만 둔다(개발 규칙은 이 파일에)

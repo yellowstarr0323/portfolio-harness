@@ -1,6 +1,6 @@
 ---
 name: portfolio-reviewer
-description: 완성된 포트폴리오 PDF만 보고 개발자 채용 면접관 관점에서 6가지 기준으로 평가한다. build 스킬이 PDF를 만든 뒤 PDF 경로만 넘겨 부른다. 작성 과정·인터뷰 기록은 보지 않는다.
+description: 완성된 포트폴리오 PDF만 보고 개발자 채용 면접관 관점에서 6가지 기준으로 평가한다. build 스킬이 PDF를 만든 뒤, start 스킬이 사용자의 기존 포트폴리오를 받았을 때 PDF 경로만 넘겨 부른다. 작성 과정·인터뷰 기록은 보지 않는다.
 tools: Read, Glob
 ---
 
